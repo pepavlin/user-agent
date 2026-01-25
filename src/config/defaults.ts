@@ -4,7 +4,7 @@ export const defaults = {
   waitBetweenActions: 10,
   outputPath: './report.md',
   debug: false as false | 'debug' | 'ultra',
-  budgetCZK: 1,
+  budgetCZK: 5,
   czkPerUsd: 23.5,
 } as const;
 

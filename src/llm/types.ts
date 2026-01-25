@@ -51,6 +51,12 @@ export type SummarizeInput = {
   persona: string;
 };
 
+// Input for page context extraction
+export type PageContextInput = {
+  screenshot: Buffer;
+  snapshot: SnapshotElement[];
+};
+
 // LLM response with token usage
 export type LLMResponse<T> = {
   data: T;
@@ -62,6 +68,7 @@ export type LLMResponse<T> = {
 
 // LLM provider type
 export type LLMProvider = {
+  getPageContext(input: PageContextInput): Promise<LLMResponse<string>>;
   analyzeScreen(input: AnalyzeInput): Promise<LLMResponse<ScreenAnalysis>>;
   formulateExpectation(input: ExpectationInput): Promise<LLMResponse<Expectation>>;
   decideAction(input: DecisionInput): Promise<LLMResponse<ActionDecision>>;

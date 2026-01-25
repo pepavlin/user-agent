@@ -1,3 +1,4 @@
+export { createPageContextPrompt } from './page-context.js';
 export { createAnalyzePrompt } from './analyze.js';
 export { createExpectationPrompt } from './expect.js';
 export { createDecisionPrompt } from './decide.js';

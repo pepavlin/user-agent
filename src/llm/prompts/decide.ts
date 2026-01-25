@@ -9,43 +9,26 @@ export const createDecisionPrompt = (
   snapshot: SnapshotElement[],
   context: SessionContext
 ): string => {
-  const intentSection = context.intent
-    ? `Your goal: ${context.intent}`
-    : 'You have no specific goal - just exploring.';
+  const goal = context.intent || 'exploring';
+  const pageInfo = context.pageContext ? `Page: ${context.pageContext}\n` : '';
 
-  return `You are simulating a user with this profile:
-${persona}
+  return `You are: ${persona}
+Goal: ${goal}
+${pageInfo}You see: ${analysis.description}
+Expectation: ${expectation.what}
 
-${intentSection}
-
-Current situation:
-${analysis.description}
-
-Your expectation:
-${expectation.what}
-
-Available interactive elements:
+Available elements:
 ${formatSnapshotForLLM(snapshot)}
 
-Decide what action to take. Choose the element by its ID from the list above.
+Choose ONE action:
+- click: click an element (elementId required)
+- type: type text into a field (elementId + value required, value = THE ACTUAL TEXT you want to type, e.g. "hello world")
+- scroll: scroll the page
+- wait: wait for something
+- read: read content on page
 
-Available actions:
-- click: Click on an element (requires elementId)
-- type: Type text into a field (requires elementId and value)
-- scroll: Scroll the page or to an element (optional elementId)
-- wait: Wait and observe (optional value in milliseconds)
-- read: Just read/observe content without interaction
-- navigate: Go to a URL (requires value with URL)
+IMPORTANT for "type" action: "value" must be the actual text you want to type (e.g. "Aleluja"), NOT the element ID!
 
-Think like a real user - not a tester. Choose what feels natural.
-
-Respond in the same language as the persona description.
-
-Respond with a JSON object:
-{
-  "action": "click" | "type" | "scroll" | "wait" | "read" | "navigate",
-  "elementId": "ID from the list above (e.g., 'btn-1', 'tex-3')",
-  "value": "For type: text to enter. For navigate: URL. For wait: milliseconds",
-  "reasoning": "Why you chose this action - from the user's perspective"
-}`;
+Respond in JSON:
+{"action":"type","elementId":"tex-1","value":"actual text to type here","reasoning":"why"}`;
 };

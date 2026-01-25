@@ -1,8 +1,9 @@
 import type { SessionContext, StepResult } from './types.js';
 
-export const createInitialContext = (intent?: string): SessionContext => {
+export const createInitialContext = (intent?: string, pageContext?: string): SessionContext => {
   return {
     intent,
+    pageContext,
     currentSummary: '',
     stepCount: 0,
     issuesFound: [],

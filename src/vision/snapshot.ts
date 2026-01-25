@@ -1,16 +1,6 @@
 import type { Page } from 'playwright';
 import type { SnapshotElement } from './types.js';
 
-type PlaywrightAccessibilityNode = {
-  role: string;
-  name: string;
-  description?: string;
-  value?: string;
-  disabled?: boolean;
-  focused?: boolean;
-  children?: PlaywrightAccessibilityNode[];
-};
-
 let idCounter = 0;
 
 const resetIdCounter = () => {
@@ -23,103 +13,28 @@ const generateId = (role: string): string => {
   return `${rolePrefix}-${idCounter}`;
 };
 
+const INTERACTIVE_ROLES = new Set([
+  'button',
+  'link',
+  'textbox',
+  'checkbox',
+  'radio',
+  'combobox',
+  'listbox',
+  'menuitem',
+  'menuitemcheckbox',
+  'menuitemradio',
+  'option',
+  'searchbox',
+  'slider',
+  'spinbutton',
+  'switch',
+  'tab',
+  'treeitem',
+]);
+
 const isInteractive = (role: string): boolean => {
-  const interactiveRoles = [
-    'button',
-    'link',
-    'textbox',
-    'checkbox',
-    'radio',
-    'combobox',
-    'listbox',
-    'menuitem',
-    'menuitemcheckbox',
-    'menuitemradio',
-    'option',
-    'searchbox',
-    'slider',
-    'spinbutton',
-    'switch',
-    'tab',
-    'treeitem',
-  ];
-  return interactiveRoles.includes(role.toLowerCase());
-};
-
-const transformNode = (
-  node: PlaywrightAccessibilityNode,
-  includeNonInteractive: boolean = false
-): SnapshotElement | null => {
-  const isNodeInteractive = isInteractive(node.role);
-
-  // Skip non-interactive nodes without interesting content
-  if (!includeNonInteractive && !isNodeInteractive && !node.name && !node.children?.length) {
-    return null;
-  }
-
-  const element: SnapshotElement = {
-    id: generateId(node.role),
-    role: node.role,
-    name: node.name || '',
-  };
-
-  if (node.description) element.description = node.description;
-  if (node.value) element.value = node.value;
-  if (node.disabled) element.disabled = node.disabled;
-  if (node.focused) element.focused = node.focused;
-
-  if (node.children?.length) {
-    const children = node.children
-      .map((child) => transformNode(child, includeNonInteractive))
-      .filter((child): child is SnapshotElement => child !== null);
-
-    if (children.length > 0) {
-      element.children = children;
-    }
-  }
-
-  return element;
-};
-
-const flattenInteractiveElements = (elements: SnapshotElement[]): SnapshotElement[] => {
-  const result: SnapshotElement[] = [];
-
-  const traverse = (element: SnapshotElement) => {
-    if (isInteractive(element.role)) {
-      // Add without children for flat list
-      result.push({
-        id: element.id,
-        role: element.role,
-        name: element.name,
-        description: element.description,
-        value: element.value,
-        disabled: element.disabled,
-        focused: element.focused,
-      });
-    }
-
-    if (element.children) {
-      element.children.forEach(traverse);
-    }
-  };
-
-  elements.forEach(traverse);
-  return result;
-};
-
-export const captureAccessibilitySnapshot = async (page: Page): Promise<SnapshotElement[]> => {
-  resetIdCounter();
-
-  // Use Playwright's accessibility snapshot via locator
-  const snapshot = await page.locator('body').ariaSnapshot();
-
-  if (!snapshot) {
-    return [];
-  }
-
-  // Parse the ARIA snapshot format and extract interactive elements
-  // ARIA snapshot returns a string representation, we need to parse it
-  return parseAriaSnapshot(snapshot);
+  return INTERACTIVE_ROLES.has(role.toLowerCase());
 };
 
 const parseAriaSnapshot = (snapshot: string): SnapshotElement[] => {
@@ -127,27 +42,30 @@ const parseAriaSnapshot = (snapshot: string): SnapshotElement[] => {
   const lines = snapshot.split('\n');
 
   for (const line of lines) {
-    const trimmed = line.trim();
-    if (!trimmed || trimmed.startsWith('-')) continue;
+    // Skip empty lines and property lines (starting with /)
+    if (!line.trim() || line.trim().startsWith('/')) continue;
 
-    // Parse lines like: "- button \"Submit\""
-    // or "- textbox \"Email\" [focused]"
-    const match = trimmed.match(/^-\s+(\w+)(?:\s+"([^"]*)")?(.*)$/);
+    // Match lines like "- button" or "- link \"text\"" or "- textbox \"placeholder\""
+    // The pattern: "- role" or "- role \"name\"" optionally followed by : or attributes
+    const match = line.match(/^(\s*)-\s+(\w+)(?:\s+"([^"]*)")?/);
+
     if (match) {
-      const [, role, name, rest] = match;
-      if (role && isInteractive(role)) {
+      const [, indent, role, name] = match;
+
+      // Only include interactive elements at top level (minimal indentation)
+      // Skip deeply nested elements to avoid duplicates
+      const indentLevel = indent?.length || 0;
+
+      if (isInteractive(role) && indentLevel <= 2) {
         const element: SnapshotElement = {
           id: generateId(role),
           role,
           name: name || '',
         };
 
-        if (rest?.includes('[disabled]')) element.disabled = true;
-        if (rest?.includes('[focused]')) element.focused = true;
-
-        // Extract value if present
-        const valueMatch = rest?.match(/=\s*"([^"]*)"/);
-        if (valueMatch) element.value = valueMatch[1];
+        // Check for attributes in the line
+        if (line.includes('[disabled]')) element.disabled = true;
+        if (line.includes('[focused]')) element.focused = true;
 
         elements.push(element);
       }
@@ -157,9 +75,27 @@ const parseAriaSnapshot = (snapshot: string): SnapshotElement[] => {
   return elements;
 };
 
+export const captureAccessibilitySnapshot = async (page: Page): Promise<SnapshotElement[]> => {
+  resetIdCounter();
+
+  try {
+    const ariaSnapshot = await page.locator('body').ariaSnapshot();
+
+    if (!ariaSnapshot) {
+      return [];
+    }
+
+    return parseAriaSnapshot(ariaSnapshot);
+  } catch (error) {
+    // Fallback: return empty array if snapshot fails
+    console.error('Failed to capture accessibility snapshot:', error);
+    return [];
+  }
+};
+
 export const formatSnapshotForLLM = (elements: SnapshotElement[]): string => {
   if (elements.length === 0) {
-    return 'No interactive elements found on the page.';
+    return 'No interactive elements found. You may need to scroll or wait for the page to load.';
   }
 
   return elements

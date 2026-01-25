@@ -1,38 +1,81 @@
 import type { Page } from 'playwright';
 import type { ActionDecision } from '../core/types.js';
+import type { SnapshotElement } from '../vision/types.js';
 import type { ActionResult } from './types.js';
+
+// Map role names to Playwright getByRole types
+const roleMap: Record<string, string> = {
+  button: 'button',
+  link: 'link',
+  textbox: 'textbox',
+  checkbox: 'checkbox',
+  radio: 'radio',
+  combobox: 'combobox',
+  listbox: 'listbox',
+  menuitem: 'menuitem',
+  option: 'option',
+  searchbox: 'searchbox',
+  slider: 'slider',
+  spinbutton: 'spinbutton',
+  switch: 'switch',
+  tab: 'tab',
+  treeitem: 'treeitem',
+};
+
+const findElement = (page: Page, element: SnapshotElement) => {
+  const role = roleMap[element.role.toLowerCase()];
+
+  if (role && element.name) {
+    // Use getByRole with name for best match, take first if multiple
+    return page.getByRole(role as Parameters<Page['getByRole']>[0], {
+      name: element.name,
+      exact: false,
+    }).first();
+  } else if (element.name) {
+    // Fallback to getByText, take first if multiple
+    return page.getByText(element.name, { exact: false }).first();
+  } else if (role) {
+    // Just role without name
+    return page.getByRole(role as Parameters<Page['getByRole']>[0]).first();
+  }
+
+  throw new Error(`Cannot find element: ${JSON.stringify(element)}`);
+};
 
 export const executeAction = async (
   page: Page,
   action: ActionDecision,
-  elementSelector?: string
+  element?: SnapshotElement
 ): Promise<ActionResult> => {
   const startTime = Date.now();
 
   try {
     switch (action.action) {
       case 'click': {
-        if (!elementSelector) {
-          throw new Error('Element selector required for click action');
+        if (!element) {
+          throw new Error('Element required for click action');
         }
-        await page.locator(elementSelector).click();
+        const locator = findElement(page, element);
+        await locator.click({ timeout: 10000, force: true });
         break;
       }
 
       case 'type': {
-        if (!elementSelector) {
-          throw new Error('Element selector required for type action');
+        if (!element) {
+          throw new Error('Element required for type action');
         }
         if (!action.value) {
           throw new Error('Value required for type action');
         }
-        await page.locator(elementSelector).fill(action.value);
+        const locator = findElement(page, element);
+        await locator.fill(action.value, { timeout: 10000 });
         break;
       }
 
       case 'scroll': {
-        if (elementSelector) {
-          await page.locator(elementSelector).scrollIntoViewIfNeeded();
+        if (element) {
+          const locator = findElement(page, element);
+          await locator.scrollIntoViewIfNeeded({ timeout: 10000 });
         } else {
           await page.evaluate('window.scrollBy(0, 300)');
         }

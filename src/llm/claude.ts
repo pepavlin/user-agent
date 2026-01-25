@@ -7,6 +7,7 @@ import type {
   DecisionInput,
   EvaluationInput,
   SummarizeInput,
+  PageContextInput,
 } from './types.js';
 import type {
   ScreenAnalysis,
@@ -20,6 +21,7 @@ import {
   createDecisionPrompt,
   createEvaluationPrompt,
   createSummarizePrompt,
+  createPageContextPrompt,
 } from './prompts/index.js';
 
 const MODEL = 'claude-sonnet-4-20250514';
@@ -80,6 +82,16 @@ export const createClaudeLLM = (): LLMProvider => {
   };
 
   return {
+    async getPageContext(input: PageContextInput): Promise<LLMResponse<string>> {
+      const prompt = createPageContextPrompt(input.snapshot);
+      const { text, inputTokens, outputTokens } = await callWithImage(prompt, input.screenshot);
+
+      return {
+        data: text.trim(),
+        usage: { inputTokens, outputTokens },
+      };
+    },
+
     async analyzeScreen(input: AnalyzeInput): Promise<LLMResponse<ScreenAnalysis>> {
       const prompt = createAnalyzePrompt(input.persona, input.context, input.snapshot);
       const { text, inputTokens, outputTokens } = await callWithImage(prompt, input.screenshot);

@@ -10,6 +10,7 @@ import type {
   DecisionInput,
   EvaluationInput,
   SummarizeInput,
+  PageContextInput,
 } from './types.js';
 import type {
   ScreenAnalysis,
@@ -23,6 +24,7 @@ import {
   createDecisionPrompt,
   createEvaluationPrompt,
   createSummarizePrompt,
+  createPageContextPrompt,
 } from './prompts/index.js';
 
 const TMP_DIR = './tmp/llm-images';
@@ -40,16 +42,16 @@ const parseJsonResponse = <T>(text: string): T => {
   return JSON.parse(jsonMatch[0]) as T;
 };
 
+const CLI_TIMEOUT_MS = 60000; // 60 second timeout
+
 const callClaudeCLI = async (
   prompt: string,
-  imagePath?: string
+  _imagePath?: string
 ): Promise<{ text: string; inputTokens: number; outputTokens: number }> => {
   return new Promise((resolve, reject) => {
+    // Note: Claude CLI doesn't support images directly, so we skip image for now
+    // and rely on the text description from accessibility snapshot
     const args = ['-p', prompt, '--output-format', 'text'];
-
-    if (imagePath) {
-      args.push('--add-file', imagePath);
-    }
 
     const child = spawn('claude', args, {
       stdio: ['pipe', 'pipe', 'pipe'],
@@ -57,6 +59,14 @@ const callClaudeCLI = async (
 
     let stdout = '';
     let stderr = '';
+    let timedOut = false;
+
+    // Set timeout
+    const timeout = setTimeout(() => {
+      timedOut = true;
+      child.kill('SIGTERM');
+      reject(new Error(`Claude CLI timed out after ${CLI_TIMEOUT_MS / 1000}s`));
+    }, CLI_TIMEOUT_MS);
 
     child.stdout.on('data', (data) => {
       stdout += data.toString();
@@ -67,6 +77,10 @@ const callClaudeCLI = async (
     });
 
     child.on('close', (code) => {
+      clearTimeout(timeout);
+
+      if (timedOut) return; // Already rejected
+
       if (code !== 0) {
         reject(new Error(`Claude CLI exited with code ${code}: ${stderr}`));
         return;
@@ -84,6 +98,7 @@ const callClaudeCLI = async (
     });
 
     child.on('error', (error) => {
+      clearTimeout(timeout);
       reject(new Error(`Failed to spawn claude CLI: ${error.message}`));
     });
   });
@@ -107,6 +122,21 @@ const cleanupImage = async (filepath: string): Promise<void> => {
 
 export const createClaudeCLI = (): LLMProvider => {
   return {
+    async getPageContext(input: PageContextInput): Promise<LLMResponse<string>> {
+      const prompt = createPageContextPrompt(input.snapshot);
+      const imagePath = await saveImageToTmp(input.screenshot);
+
+      try {
+        const { text, inputTokens, outputTokens } = await callClaudeCLI(prompt, imagePath);
+        return {
+          data: text.trim(),
+          usage: { inputTokens, outputTokens },
+        };
+      } finally {
+        await cleanupImage(imagePath);
+      }
+    },
+
     async analyzeScreen(input: AnalyzeInput): Promise<LLMResponse<ScreenAnalysis>> {
       const prompt = createAnalyzePrompt(input.persona, input.context, input.snapshot);
       const imagePath = await saveImageToTmp(input.screenshot);

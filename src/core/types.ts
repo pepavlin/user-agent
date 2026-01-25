@@ -20,6 +20,7 @@ export type Credentials = {
 // Context maintained between steps
 export type SessionContext = {
   intent?: string;
+  pageContext?: string;       // Initial understanding of what this page/app is
   currentSummary: string;
   lastStepResult?: StepResult;
   stepCount: number;

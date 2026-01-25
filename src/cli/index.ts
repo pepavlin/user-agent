@@ -44,8 +44,8 @@ program
   .option('--credentials <pairs>', 'Login credentials as "key=value,key=value"')
   .option('--output <path>', 'Output report path', defaults.outputPath)
   .option('--debug [level]', 'Debug mode (true, debug, or ultra)', 'false')
-  .option('--budget <czk>', 'Maximum cost in CZK', String(defaults.budgetCZK))
-  .option('--llm <provider>', 'LLM provider (claude-cli, claude, openai)', 'claude-cli')
+  .option('--budget <czk>', 'Maximum cost in CZK', '5')
+  .option('--llm <provider>', 'LLM provider (claude, claude-cli, openai)', 'claude')
   .action(async (options) => {
     const debugLevel = parseDebug(options.debug);
     const logger = createLogger(debugLevel);

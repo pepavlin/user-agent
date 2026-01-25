@@ -73,6 +73,7 @@ export const executeStep = async (
 
   // 5. Execute action
   logger.step(stepNumber, 'Executing action...');
+  browser.setSnapshot(beforeCapture.snapshot);
   const actionResult = await browser.executeAction(decisionResponse.data);
 
   if (!actionResult.success) {

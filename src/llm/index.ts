@@ -4,7 +4,7 @@ import { createClaudeCLI } from './claude-cli.js';
 
 export type LLMProviderType = 'claude' | 'claude-cli' | 'openai';
 
-export const createLLMProvider = (type: LLMProviderType = 'claude-cli'): LLMProvider => {
+export const createLLMProvider = (type: LLMProviderType = 'claude'): LLMProvider => {
   switch (type) {
     case 'claude-cli':
       return createClaudeCLI();

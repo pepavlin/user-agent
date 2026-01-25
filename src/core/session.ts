@@ -95,8 +95,18 @@ export const runSession = async (
   }
   const vision = createVisionProvider(page);
 
-  // Initialize context
-  let context = createInitialContext(config.intent);
+  // Get initial page context (what kind of website/app is this?)
+  logger.info('Analyzing page context...');
+  const initialCapture = await vision.capture();
+  const pageContextResponse = await llm.getPageContext({
+    screenshot: initialCapture.screenshot,
+    snapshot: initialCapture.snapshot,
+  });
+  costTracker.addUsage(pageContextResponse.usage.inputTokens, pageContextResponse.usage.outputTokens);
+  logger.info(`Page context: ${pageContextResponse.data}`);
+
+  // Initialize context with page understanding
+  let context = createInitialContext(config.intent, pageContextResponse.data);
 
   // Execute steps
   const sessionTimeout = config.timeout * 1000;

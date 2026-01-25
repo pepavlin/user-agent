@@ -6,39 +6,25 @@ export const createEvaluationPrompt = (
   action: ActionDecision,
   context: SessionContext
 ): string => {
-  const intentSection = context.intent
-    ? `Your goal: ${context.intent}`
-    : 'You have no specific goal - just exploring.';
+  // Build action description based on action type
+  let actionDesc = `${action.action}`;
+  if (action.action === 'type' && action.value) {
+    actionDesc = `typed "${action.value}" into field`;
+  } else if (action.action === 'click' && action.elementId) {
+    actionDesc = `clicked on element`;
+  } else if (action.elementId) {
+    actionDesc = `${action.action} on element`;
+  }
 
-  return `You are simulating a user with this profile:
-${persona}
+  const pageInfo = context.pageContext ? `On: ${context.pageContext}\n` : '';
 
-${intentSection}
-
-Before the action, you expected:
-${expectation.what}
-(Expected time: ${expectation.expectedTime || 'not specified'})
-
-Action you took:
-${action.action}${action.elementId ? ` on element ${action.elementId}` : ''}
+  return `You are: ${persona}
+${pageInfo}Expected: ${expectation.what}
+Action taken: ${actionDesc}
 Reasoning: ${action.reasoning}
 
-Now you're looking at the result. Compare what happened with what you expected.
+Look at the screenshot and compare expectation vs reality. What happened after the action?
 
-Evaluate honestly as this user would:
-- Was the expectation met?
-- Were you surprised (positively or negatively)?
-- Was anything confusing?
-- What would you suggest to improve the experience?
-
-Respond in the same language as the persona description.
-
-Respond with a JSON object:
-{
-  "result": "met" | "unmet" | "partial" | "surprised",
-  "reality": "What actually happened - describe what you see now",
-  "notes": ["List of observations about the UX"],
-  "suggestions": ["List of improvement suggestions"],
-  "userQuote": "A quote from the user's perspective, e.g., 'As a user, I expected...'"
-}`;
+Respond in JSON:
+{"result":"met/unmet/partial/surprised","reality":"describe what you see now","notes":["observation"],"suggestions":["improvement"],"userQuote":"As user I..."}`;
 };

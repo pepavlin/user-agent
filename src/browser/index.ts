@@ -1,14 +1,15 @@
 import { chromium, type Browser, type Page } from 'playwright';
 import type { BrowserManager } from './types.js';
 import type { ActionDecision } from '../core/types.js';
+import type { SnapshotElement } from '../vision/types.js';
 import { executeAction } from './actions.js';
 
 export const createBrowserManager = (): BrowserManager => {
   let browser: Browser | null = null;
   let page: Page | null = null;
 
-  // Map of element IDs to selectors (populated from accessibility snapshot)
-  let elementMap: Map<string, string> = new Map();
+  // Store snapshot elements for finding by ID
+  let currentSnapshot: SnapshotElement[] = [];
 
   return {
     async launch() {
@@ -28,22 +29,21 @@ export const createBrowserManager = (): BrowserManager => {
       await page.goto(url, { waitUntil: 'domcontentloaded' });
     },
 
+    setSnapshot(snapshot: SnapshotElement[]) {
+      currentSnapshot = snapshot;
+    },
+
     async executeAction(action: ActionDecision) {
       if (!page) {
         throw new Error('Browser not launched');
       }
 
-      let selector: string | undefined;
+      // Find element info from snapshot
+      const element = action.elementId
+        ? currentSnapshot.find((el) => el.id === action.elementId)
+        : undefined;
 
-      if (action.elementId) {
-        selector = elementMap.get(action.elementId);
-        if (!selector && action.action !== 'wait' && action.action !== 'read') {
-          // Try to find element by accessible name as fallback
-          selector = `[data-element-id="${action.elementId}"]`;
-        }
-      }
-
-      return executeAction(page, action, selector);
+      return executeAction(page, action, element);
     },
 
     getPage() {
