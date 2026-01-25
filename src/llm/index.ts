@@ -1,10 +1,13 @@
 import type { LLMProvider } from './types.js';
 import { createClaudeLLM } from './claude.js';
+import { createClaudeCLI } from './claude-cli.js';
 
-export type LLMProviderType = 'claude' | 'openai';
+export type LLMProviderType = 'claude' | 'claude-cli' | 'openai';
 
-export const createLLMProvider = (type: LLMProviderType = 'claude'): LLMProvider => {
+export const createLLMProvider = (type: LLMProviderType = 'claude-cli'): LLMProvider => {
   switch (type) {
+    case 'claude-cli':
+      return createClaudeCLI();
     case 'claude':
       return createClaudeLLM();
     case 'openai':

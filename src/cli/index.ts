@@ -3,7 +3,7 @@
 import { Command } from 'commander';
 import { runSession } from '../core/session.js';
 import { createBrowserManager } from '../browser/index.js';
-import { createLLMProvider } from '../llm/index.js';
+import { createLLMProvider, type LLMProviderType } from '../llm/index.js';
 import { createMarkdownReportGenerator } from '../report/index.js';
 import { createLogger, createCostTracker } from '../utils/index.js';
 import { defaults } from '../config/defaults.js';
@@ -45,6 +45,7 @@ program
   .option('--output <path>', 'Output report path', defaults.outputPath)
   .option('--debug [level]', 'Debug mode (true, debug, or ultra)', 'false')
   .option('--budget <czk>', 'Maximum cost in CZK', String(defaults.budgetCZK))
+  .option('--llm <provider>', 'LLM provider (claude-cli, claude, openai)', 'claude-cli')
   .action(async (options) => {
     const debugLevel = parseDebug(options.debug);
     const logger = createLogger(debugLevel);
@@ -68,7 +69,7 @@ program
       logger.info('================');
 
       const browser = createBrowserManager();
-      const llm = createLLMProvider('claude');
+      const llm = createLLMProvider(options.llm as LLMProviderType);
       const reportGenerator = createMarkdownReportGenerator();
       const costTracker = createCostTracker(config.budgetCZK, defaults.czkPerUsd);
 
