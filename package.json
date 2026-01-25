@@ -1,0 +1,42 @@
+{
+  "name": "user-agent",
+  "version": "0.1.0",
+  "description": "Simulate real human users to discover UX blind spots",
+  "type": "module",
+  "main": "dist/cli/index.js",
+  "bin": {
+    "user-agent": "dist/cli/index.js"
+  },
+  "scripts": {
+    "dev": "tsx src/cli/index.ts",
+    "build": "tsc",
+    "start": "node dist/cli/index.js",
+    "test": "vitest",
+    "lint": "eslint src/",
+    "typecheck": "tsc --noEmit"
+  },
+  "keywords": [
+    "ux",
+    "testing",
+    "ai",
+    "playwright",
+    "automation",
+    "user-simulation"
+  ],
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.39.0",
+    "commander": "^12.1.0",
+    "playwright": "^1.49.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.0",
+    "tsx": "^4.19.0",
+    "typescript": "^5.7.0",
+    "vitest": "^2.1.0"
+  },
+  "engines": {
+    "node": ">=20.0.0"
+  }
+}
