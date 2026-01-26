@@ -17,14 +17,25 @@ export const createEvaluationPrompt = (
   }
 
   const pageInfo = context.pageContext ? `On: ${context.pageContext}\n` : '';
+  const progress = context.currentSummary ? `Progress: ${context.currentSummary}\n` : '';
 
   return `You are: ${persona}
-${pageInfo}Expected: ${expectation.what}
+${pageInfo}${progress}Expected: ${expectation.what}
 Action taken: ${actionDesc}
 Reasoning: ${action.reasoning}
 
-Look at the screenshot and compare expectation vs reality. What happened after the action?
+Look at the screenshot and evaluate from THIS persona's perspective:
+- Did the result match their expectation? (met/unmet/partial/surprised)
+- What does this persona see now?
+- What UX problems would THIS user notice (based on their age, tech skills, goals)?
+- What specific improvements would help THIS type of user?
 
-Respond in JSON:
-{"result":"met/unmet/partial/surprised","reality":"describe what you see now","notes":["observation"],"suggestions":["improvement"],"userQuote":"As user I..."}`;
+Respond in JSON (write in the persona's language - Czech for Czech personas):
+{
+  "result": "met/unmet/partial/surprised",
+  "reality": "describe what happened from this persona's perspective",
+  "notes": ["specific UX observations for this user type"],
+  "suggestions": ["specific improvements that would help this persona"],
+  "userQuote": "As [persona type] I... (a realistic quote expressing their feeling)"
+}`;
 };

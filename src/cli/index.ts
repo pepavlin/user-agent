@@ -7,6 +7,7 @@ import { createLLMProvider, type LLMProviderType } from '../llm/index.js';
 import { createMarkdownReportGenerator } from '../report/index.js';
 import { createLogger, createCostTracker } from '../utils/index.js';
 import { defaults } from '../config/defaults.js';
+import { getPersonaPreset, listPersonaPresets, PERSONA_PRESETS } from '../config/personas.js';
 import type { SessionConfig, Credentials } from '../core/types.js';
 import type { DebugLevel } from '../utils/types.js';
 
@@ -33,9 +34,29 @@ const program = new Command();
 program
   .name('user-agent')
   .description('Simulate real human users to discover UX blind spots')
-  .version('0.1.0')
+  .version('0.1.0');
+
+// List personas command
+program
+  .command('personas')
+  .description('List available persona presets')
+  .action(() => {
+    console.log('\n📋 Available persona presets:\n');
+    for (const [key, preset] of Object.entries(PERSONA_PRESETS)) {
+      console.log(`  ${key.padEnd(15)} - ${preset.name}`);
+      console.log(`                    ${preset.description}`);
+      console.log(`                    Example: --persona-preset ${key}\n`);
+    }
+    console.log('Use with: npm run dev -- --url <url> --persona-preset <key>\n');
+  });
+
+// Main run command (default)
+program
+  .command('run', { isDefault: true })
+  .description('Run a UX testing session')
   .requiredOption('--url <url>', 'Target URL to test')
-  .requiredOption('--persona <text>', 'Natural language user description')
+  .option('--persona <text>', 'Natural language user description')
+  .option('--persona-preset <key>', 'Use predefined persona (run "personas" to see options)')
   .option('--intent <text>', 'What the user wants to achieve')
   .option('--explore', 'Enable exploratory mode (no specific intent)', false)
   .option('--steps <number>', 'Maximum number of steps', String(defaults.maxSteps))
@@ -51,11 +72,37 @@ program
     const logger = createLogger(debugLevel);
 
     try {
+      // Resolve persona from preset or direct input
+      let persona = options.persona;
+      let intent = options.intent;
+
+      if (options.personaPreset) {
+        const preset = getPersonaPreset(options.personaPreset);
+        if (!preset) {
+          console.error(`❌ Unknown persona preset: ${options.personaPreset}`);
+          console.error(`Available presets: ${listPersonaPresets().join(', ')}`);
+          console.error('Run "npm run dev -- personas" to see all options');
+          process.exit(1);
+        }
+        persona = preset.persona;
+        // Use preset's first sample intent if no intent provided
+        if (!intent && preset.sampleIntents.length > 0) {
+          intent = preset.sampleIntents[0];
+        }
+        logger.info(`Using persona preset: ${preset.name}`);
+      }
+
+      if (!persona) {
+        console.error('❌ Error: Either --persona or --persona-preset is required');
+        console.error('Run "npm run dev -- personas" to see available presets');
+        process.exit(1);
+      }
+
       const config: SessionConfig = {
         url: options.url,
-        persona: options.persona,
-        intent: options.intent,
-        explore: options.explore || !options.intent,
+        persona: persona,
+        intent: intent,
+        explore: options.explore || !intent,
         maxSteps: parseInt(options.steps, 10),
         timeout: parseInt(options.timeout, 10),
         waitBetweenActions: parseInt(options.wait, 10),

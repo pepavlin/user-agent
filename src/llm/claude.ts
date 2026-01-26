@@ -23,8 +23,50 @@ import {
   createSummarizePrompt,
   createPageContextPrompt,
 } from './prompts/index.js';
+import { withRetry } from '../utils/retry.js';
 
 const MODEL = 'claude-sonnet-4-20250514';
+const API_TIMEOUT_MS = 60000; // 60 second timeout
+
+// Custom error for API issues
+export class LLMError extends Error {
+  constructor(message: string, public readonly code?: string) {
+    super(message);
+    this.name = 'LLMError';
+  }
+}
+
+const handleAPIError = (error: unknown): never => {
+  if (error instanceof Error) {
+    const message = error.message;
+
+    // Check for credit balance error
+    if (message.includes('credit balance is too low')) {
+      throw new LLMError(
+        'Anthropic API credits exhausted. Please add credits at https://console.anthropic.com',
+        'CREDITS_EXHAUSTED'
+      );
+    }
+
+    // Check for rate limiting
+    if (message.includes('rate_limit') || message.includes('429')) {
+      throw new LLMError(
+        'API rate limit reached. Please wait and try again.',
+        'RATE_LIMITED'
+      );
+    }
+
+    // Check for timeout
+    if (message.includes('timeout') || message.includes('ETIMEDOUT')) {
+      throw new LLMError(
+        'API request timed out. Please try again.',
+        'TIMEOUT'
+      );
+    }
+  }
+
+  throw error;
+};
 
 const parseJsonResponse = <T>(text: string): T => {
   // Try to extract JSON from the response
@@ -42,43 +84,52 @@ export const createClaudeLLM = (): LLMProvider => {
     prompt: string,
     image?: Buffer
   ): Promise<{ text: string; inputTokens: number; outputTokens: number }> => {
-    const content: Anthropic.Messages.ContentBlockParam[] = [];
+    return withRetry(async () => {
+      const content: Anthropic.Messages.ContentBlockParam[] = [];
 
-    if (image) {
+      if (image) {
+        content.push({
+          type: 'image',
+          source: {
+            type: 'base64',
+            media_type: 'image/png',
+            data: image.toString('base64'),
+          },
+        });
+      }
+
       content.push({
-        type: 'image',
-        source: {
-          type: 'base64',
-          media_type: 'image/png',
-          data: image.toString('base64'),
-        },
+        type: 'text',
+        text: prompt,
       });
-    }
 
-    content.push({
-      type: 'text',
-      text: prompt,
-    });
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), API_TIMEOUT_MS);
 
-    const response = await client.messages.create({
-      model: MODEL,
-      max_tokens: 1024,
-      messages: [
-        {
-          role: 'user',
-          content,
-        },
-      ],
-    });
+      try {
+        const response = await client.messages.create({
+          model: MODEL,
+          max_tokens: 1024,
+          messages: [
+            {
+              role: 'user',
+              content,
+            },
+          ],
+        });
 
-    const textContent = response.content.find((c) => c.type === 'text');
-    const text = textContent && 'text' in textContent ? textContent.text : '';
+        const textContent = response.content.find((c) => c.type === 'text');
+        const text = textContent && 'text' in textContent ? textContent.text : '';
 
-    return {
-      text,
-      inputTokens: response.usage.input_tokens,
-      outputTokens: response.usage.output_tokens,
-    };
+        return {
+          text,
+          inputTokens: response.usage.input_tokens,
+          outputTokens: response.usage.output_tokens,
+        };
+      } finally {
+        clearTimeout(timeoutId);
+      }
+    }, { attempts: 3, delayMs: 2000 }).catch(handleAPIError);
   };
 
   return {

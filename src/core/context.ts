@@ -10,21 +10,29 @@ export const createInitialContext = (intent?: string, pageContext?: string): Ses
   };
 };
 
+// Keywords that indicate UX issues (English and Czech)
+const issueKeywords = [
+  // English
+  'confus', 'unclear', 'difficult', 'hidden', 'missing', 'frustrat',
+  'broken', 'inconsistent', 'unusable', 'poor', 'bad', 'problem',
+  'error', 'fail', 'wrong', 'bug', 'issue', 'doesn\'t work', 'not work',
+  'hard to', 'cannot', 'can\'t', 'impossible', 'unintuitive',
+  // Czech
+  'nekonzistent', 'chybí', 'problém', 'špatně', 'špatná', 'špatný',
+  'nefunguje', 'nereaguje', 'matoucí', 'nejasn', 'nelogick', 'obtížn',
+  'komplikovan', 'zmatek', 'nepoužiteln', 'nepřehled',
+];
+
 export const updateContext = (
   context: SessionContext,
   stepResult: StepResult,
   newSummary: string
 ): SessionContext => {
   // Collect issues from evaluation notes
-  const newIssues = stepResult.evaluation.notes.filter(
-    (note) =>
-      note.toLowerCase().includes('confus') ||
-      note.toLowerCase().includes('unclear') ||
-      note.toLowerCase().includes('difficult') ||
-      note.toLowerCase().includes('hidden') ||
-      note.toLowerCase().includes('missing') ||
-      note.toLowerCase().includes('frustrat')
-  );
+  const newIssues = stepResult.evaluation.notes.filter((note) => {
+    const lower = note.toLowerCase();
+    return issueKeywords.some((keyword) => lower.includes(keyword));
+  });
 
   return {
     ...context,

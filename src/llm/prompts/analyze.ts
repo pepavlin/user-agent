@@ -26,6 +26,11 @@ ${progressPart}
 Page elements:
 ${formatSnapshotForLLM(snapshot)}
 
-Describe briefly what you see on screen NOW (current state, not what page is about). Respond in JSON:
-{"description":"what you see now","mainElements":["element1","element2"],"observations":["observation1"]}`;
+As this specific person, describe what you see on screen NOW. Consider:
+- What would catch THIS persona's attention first?
+- What might be confusing or unclear for someone with their background?
+- What's relevant to their goal?
+
+Respond in JSON (use the persona's language - Czech if they're Czech):
+{"description":"what you see now from this persona's perspective","mainElements":["key elements you notice"],"observations":["UX observations relevant to this user type"]}`;
 };

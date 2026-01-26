@@ -81,8 +81,11 @@ export const runSession = async (
     logger.info('Mode: Exploratory');
   }
 
-  // Launch browser and navigate
-  await browser.launch();
+  // Launch browser and navigate (with video in ultra debug mode)
+  await browser.launch({
+    debug: config.debug,
+    videoDir: './tmp/videos',
+  });
   logger.info('Browser launched');
 
   await browser.navigate(config.url);
@@ -161,9 +164,18 @@ export const runSession = async (
 
   // Close browser
   await browser.close();
+  const videoPath = browser.getVideoPath();
+  if (videoPath) {
+    logger.info(`Video saved to ${videoPath}`);
+  }
   logger.info('Browser closed');
 
   const endTime = Date.now();
+
+  // Pass video path to report generator
+  if (videoPath) {
+    reportGenerator.setVideoPath(videoPath);
+  }
 
   // Generate report
   const report: SessionReport = {
