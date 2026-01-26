@@ -66,10 +66,16 @@ export const executeStep = async (
   costTracker.addUsage(decisionResponse.usage.inputTokens, decisionResponse.usage.outputTokens);
   await logger.saveLLMResponse(stepNumber, 'decide', decisionResponse);
 
-  logger.step(
-    stepNumber,
-    `Action: ${decisionResponse.data.action}${decisionResponse.data.elementId ? ` on [${decisionResponse.data.elementId}]` : ''}`
-  );
+  // Log the action
+  if (decisionResponse.data.action === 'fill' && decisionResponse.data.inputs) {
+    const inputIds = decisionResponse.data.inputs.map(i => i.elementId).join(', ');
+    logger.step(stepNumber, `Action: fill ${decisionResponse.data.inputs.length} fields [${inputIds}]`);
+  } else {
+    logger.step(
+      stepNumber,
+      `Action: ${decisionResponse.data.action}${decisionResponse.data.elementId ? ` on [${decisionResponse.data.elementId}]` : ''}`
+    );
+  }
 
   // 5. Execute action
   logger.step(stepNumber, 'Executing action...');

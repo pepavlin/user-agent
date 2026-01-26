@@ -45,7 +45,8 @@ const findElement = (page: Page, element: SnapshotElement) => {
 export const executeAction = async (
   page: Page,
   action: ActionDecision,
-  element?: SnapshotElement
+  element?: SnapshotElement,
+  allElements?: SnapshotElement[]
 ): Promise<ActionResult> => {
   const startTime = Date.now();
 
@@ -69,6 +70,26 @@ export const executeAction = async (
         }
         const locator = findElement(page, element);
         await locator.fill(action.value, { timeout: 10000 });
+        break;
+      }
+
+      case 'fill': {
+        // Fill multiple form fields at once
+        if (!action.inputs || action.inputs.length === 0) {
+          throw new Error('Inputs array required for fill action');
+        }
+        if (!allElements) {
+          throw new Error('All elements required for fill action');
+        }
+
+        for (const input of action.inputs) {
+          const targetElement = allElements.find(el => el.id === input.elementId);
+          if (!targetElement) {
+            throw new Error(`Element not found: ${input.elementId}`);
+          }
+          const locator = findElement(page, targetElement);
+          await locator.fill(input.value, { timeout: 10000 });
+        }
         break;
       }
 

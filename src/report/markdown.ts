@@ -42,7 +42,13 @@ const formatStep = (step: StepResult): string => {
     lines.push(`(Expected time: ${step.expectation.expectedTime})`);
   }
   lines.push('');
-  lines.push(`**Action:** ${step.action.action}${step.action.elementId ? ` on [${step.action.elementId}]` : ''}`);
+  // Format action based on type
+  if (step.action.action === 'fill' && step.action.inputs) {
+    const filledFields = step.action.inputs.map(i => `[${i.elementId}]="${i.value}"`).join(', ');
+    lines.push(`**Action:** fill ${step.action.inputs.length} fields: ${filledFields}`);
+  } else {
+    lines.push(`**Action:** ${step.action.action}${step.action.elementId ? ` on [${step.action.elementId}]` : ''}`);
+  }
   lines.push(`*Reasoning:* ${step.action.reasoning}`);
   lines.push('');
   lines.push(`**Result:** ${step.evaluation.reality}`);
@@ -79,7 +85,9 @@ const formatQuickSummary = (steps: StepResult[]): string => {
   steps.forEach((step) => {
     // Extract brief target description
     let target = '';
-    if (step.action.action === 'type' && step.action.value) {
+    if (step.action.action === 'fill' && step.action.inputs) {
+      target = `${step.action.inputs.length} fields`;
+    } else if (step.action.action === 'type' && step.action.value) {
       target = `"${step.action.value.substring(0, 20)}${step.action.value.length > 20 ? '...' : ''}"`;
     } else if (step.action.elementId) {
       // Try to get element name from analysis

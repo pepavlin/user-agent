@@ -60,7 +60,8 @@ export const createBrowserManager = (): BrowserManager => {
         ? currentSnapshot.find((el) => el.id === action.elementId)
         : undefined;
 
-      return executeAction(page, action, element);
+      // Pass all elements for 'fill' action which needs to find multiple elements
+      return executeAction(page, action, element, currentSnapshot);
     },
 
     getPage() {

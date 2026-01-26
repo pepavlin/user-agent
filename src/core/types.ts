@@ -53,12 +53,20 @@ export type Expectation = {
 };
 
 // Action decision from AI
-export type ActionType = 'click' | 'type' | 'scroll' | 'wait' | 'navigate' | 'read';
+export type ActionType = 'click' | 'type' | 'scroll' | 'wait' | 'navigate' | 'read' | 'fill';
+
+// Single input to fill
+export type InputFill = {
+  elementId: string;
+  value: string;
+};
 
 export type ActionDecision = {
   action: ActionType;
   elementId?: string;
   value?: string;
+  // For 'fill' action: multiple inputs at once (e.g., login form)
+  inputs?: InputFill[];
   reasoning: string;
 };
 
