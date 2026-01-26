@@ -66,7 +66,7 @@ program
   .option('--output <path>', 'Output report path', defaults.outputPath)
   .option('--debug [level]', 'Debug mode (true, debug, or ultra)', 'false')
   .option('--budget <czk>', 'Maximum cost in CZK', '5')
-  .option('--llm <provider>', 'LLM provider (claude, claude-cli, openai)', 'claude')
+  .option('--llm <provider>', 'LLM provider (claude, claude-cli, openai)', 'claude-cli')
   .action(async (options) => {
     const debugLevel = parseDebug(options.debug);
     const logger = createLogger(debugLevel);

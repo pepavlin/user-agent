@@ -1,6 +1,6 @@
 import { spawn } from 'child_process';
 import { writeFile, unlink, mkdir } from 'fs/promises';
-import { join } from 'path';
+import { join, resolve } from 'path';
 import { randomUUID } from 'crypto';
 import type {
   LLMProvider,
@@ -27,7 +27,7 @@ import {
   createPageContextPrompt,
 } from './prompts/index.js';
 
-const TMP_DIR = './tmp/llm-images';
+const TMP_DIR = resolve('./tmp/llm-images');
 
 const ensureTmpDir = async () => {
   await mkdir(TMP_DIR, { recursive: true });
@@ -42,20 +42,30 @@ const parseJsonResponse = <T>(text: string): T => {
   return JSON.parse(jsonMatch[0]) as T;
 };
 
-const CLI_TIMEOUT_MS = 60000; // 60 second timeout
+const CLI_TIMEOUT_MS = 180000; // 180 second timeout (3 minutes)
 
 const callClaudeCLI = async (
   prompt: string,
-  _imagePath?: string
+  imagePath?: string
 ): Promise<{ text: string; inputTokens: number; outputTokens: number }> => {
-  return new Promise((resolve, reject) => {
-    // Note: Claude CLI doesn't support images directly, so we skip image for now
-    // and rely on the text description from accessibility snapshot
-    const args = ['-p', prompt, '--output-format', 'text'];
+  return new Promise((resolvePromise, reject) => {
+    // If image path provided, prepend instruction to read the screenshot
+    const fullPrompt = imagePath
+      ? `First, read and analyze the screenshot at: ${imagePath}\n\nThen answer:\n${prompt}`
+      : prompt;
+
+    const args = ['-p', fullPrompt, '--output-format', 'text', '--dangerously-skip-permissions'];
 
     const child = spawn('claude', args, {
       stdio: ['pipe', 'pipe', 'pipe'],
+      env: {
+        ...process.env,
+        ANTHROPIC_API_KEY: '', // Use Claude subscription instead of API key
+      },
     });
+
+    // Close stdin immediately since we don't need it
+    child.stdin.end();
 
     let stdout = '';
     let stderr = '';
@@ -90,7 +100,7 @@ const callClaudeCLI = async (
       const estimatedInputTokens = Math.ceil(prompt.length / 4);
       const estimatedOutputTokens = Math.ceil(stdout.length / 4);
 
-      resolve({
+      resolvePromise({
         text: stdout,
         inputTokens: estimatedInputTokens,
         outputTokens: estimatedOutputTokens,
