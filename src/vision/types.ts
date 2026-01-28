@@ -8,6 +8,8 @@ export type SnapshotElement = {
   disabled?: boolean;
   focused?: boolean;
   children?: SnapshotElement[];
+  // Index among elements with same role+name (for nth() selection)
+  nthIndex?: number;
 };
 
 // Result of vision capture

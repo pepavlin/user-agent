@@ -5,6 +5,8 @@ import type {
   AnalyzeInput,
   ExpectationInput,
   DecisionInput,
+  ExpectAndDecideInput,
+  ExpectAndDecideResult,
   EvaluationInput,
   SummarizeInput,
   PageContextInput,
@@ -19,6 +21,7 @@ import {
   createAnalyzePrompt,
   createExpectationPrompt,
   createDecisionPrompt,
+  createExpectAndDecidePrompt,
   createEvaluationPrompt,
   createSummarizePrompt,
   createPageContextPrompt,
@@ -175,6 +178,29 @@ export const createClaudeLLM = (): LLMProvider => {
 
       return {
         data: parseJsonResponse<ActionDecision>(text),
+        usage: { inputTokens, outputTokens },
+      };
+    },
+
+    async expectAndDecide(input: ExpectAndDecideInput): Promise<LLMResponse<ExpectAndDecideResult>> {
+      const prompt = createExpectAndDecidePrompt(
+        input.persona,
+        input.analysis,
+        input.snapshot,
+        input.context
+      );
+      const { text, inputTokens, outputTokens } = await callWithImage(prompt);
+      const parsed = parseJsonResponse<{ expectation: { what: string; expectedTime?: string; confidence?: string }; decision: ActionDecision }>(text);
+
+      return {
+        data: {
+          expectation: {
+            what: parsed.expectation.what,
+            expectedTime: parsed.expectation.expectedTime,
+            confidence: parsed.expectation.confidence,
+          },
+          decision: parsed.decision,
+        },
         usage: { inputTokens, outputTokens },
       };
     },

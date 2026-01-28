@@ -42,63 +42,55 @@ export const executeStep = async (
 
   logger.debug(`Analysis: ${analysisResponse.data.description}`);
 
-  // 3. Formulate expectation
-  logger.step(stepNumber, 'Formulating expectation...');
-  const expectationResponse = await llm.formulateExpectation({
-    analysis: analysisResponse.data,
-    persona: config.persona,
-    context,
-  });
-  costTracker.addUsage(expectationResponse.usage.inputTokens, expectationResponse.usage.outputTokens);
-  await logger.saveLLMResponse(stepNumber, 'expect', expectationResponse);
-
-  logger.debug(`Expectation: ${expectationResponse.data.what}`);
-
-  // 4. Decide action
+  // 3. Formulate expectation + Decide action (combined for speed)
   logger.step(stepNumber, 'Deciding action...');
-  const decisionResponse = await llm.decideAction({
+  const expectAndDecideResponse = await llm.expectAndDecide({
     analysis: analysisResponse.data,
-    expectation: expectationResponse.data,
     snapshot: beforeCapture.snapshot,
     persona: config.persona,
     context,
   });
-  costTracker.addUsage(decisionResponse.usage.inputTokens, decisionResponse.usage.outputTokens);
-  await logger.saveLLMResponse(stepNumber, 'decide', decisionResponse);
+  costTracker.addUsage(expectAndDecideResponse.usage.inputTokens, expectAndDecideResponse.usage.outputTokens);
+  await logger.saveLLMResponse(stepNumber, 'expect-and-decide', expectAndDecideResponse);
+
+  const expectationData = expectAndDecideResponse.data.expectation;
+  const decisionData = expectAndDecideResponse.data.decision;
+
+  logger.debug(`Expectation: ${expectationData.what}`);
 
   // Log the action
-  if (decisionResponse.data.action === 'fill' && decisionResponse.data.inputs) {
-    const inputIds = decisionResponse.data.inputs.map(i => i.elementId).join(', ');
-    logger.step(stepNumber, `Action: fill ${decisionResponse.data.inputs.length} fields [${inputIds}]`);
+  if (decisionData.action === 'fill' && decisionData.inputs) {
+    const inputIds = decisionData.inputs.map(i => i.elementId).join(', ');
+    logger.step(stepNumber, `Action: fill ${decisionData.inputs.length} fields [${inputIds}]`);
   } else {
     logger.step(
       stepNumber,
-      `Action: ${decisionResponse.data.action}${decisionResponse.data.elementId ? ` on [${decisionResponse.data.elementId}]` : ''}`
+      `Action: ${decisionData.action}${decisionData.elementId ? ` on [${decisionData.elementId}]` : ''}`
     );
   }
 
-  // 5. Execute action
+  // 4. Execute action
   logger.step(stepNumber, 'Executing action...');
   browser.setSnapshot(beforeCapture.snapshot);
-  const actionResult = await browser.executeAction(decisionResponse.data);
+  const actionResult = await browser.executeAction(decisionData);
 
   if (!actionResult.success) {
     logger.error(`Action failed: ${actionResult.error}`);
   }
 
-  // 6. Wait for page to settle
+  // 5. Wait for page to settle
   logger.step(stepNumber, `Waiting ${config.waitBetweenActions}s for page to settle...`);
   await new Promise((resolve) => setTimeout(resolve, config.waitBetweenActions * 1000));
 
-  // 7. Capture result state
+  // 6. Capture result state
   const afterCapture = await vision.capture();
   await logger.saveScreenshot(stepNumber, 'after', afterCapture.screenshot);
 
-  // 8. Evaluate result
+  // 7. Evaluate result
   logger.step(stepNumber, 'Evaluating result...');
   const evaluationResponse = await llm.evaluateResult({
-    expectation: expectationResponse.data,
-    action: decisionResponse.data,
+    expectation: expectationData,
+    action: decisionData,
     beforeScreenshot: beforeCapture.screenshot,
     afterScreenshot: afterCapture.screenshot,
     persona: config.persona,
@@ -114,8 +106,8 @@ export const executeStep = async (
     timestamp: beforeCapture.timestamp,
     screenshot: beforeCapture.screenshot,
     analysis: analysisResponse.data,
-    expectation: expectationResponse.data,
-    action: decisionResponse.data,
+    expectation: expectationData,
+    action: decisionData,
     evaluation: evaluationResponse.data,
   };
 };

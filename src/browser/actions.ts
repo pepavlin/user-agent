@@ -24,19 +24,20 @@ const roleMap: Record<string, string> = {
 
 const findElement = (page: Page, element: SnapshotElement) => {
   const role = roleMap[element.role.toLowerCase()];
+  const nthIndex = element.nthIndex ?? 0;
 
   if (role && element.name) {
-    // Use getByRole with name for best match, take first if multiple
+    // Use getByRole with name, then nth() to get correct occurrence
     return page.getByRole(role as Parameters<Page['getByRole']>[0], {
       name: element.name,
       exact: false,
-    }).first();
+    }).nth(nthIndex);
   } else if (element.name) {
-    // Fallback to getByText, take first if multiple
-    return page.getByText(element.name, { exact: false }).first();
+    // Fallback to getByText with nth()
+    return page.getByText(element.name, { exact: false }).nth(nthIndex);
   } else if (role) {
-    // Just role without name
-    return page.getByRole(role as Parameters<Page['getByRole']>[0]).first();
+    // Just role without name, use nth()
+    return page.getByRole(role as Parameters<Page['getByRole']>[0]).nth(nthIndex);
   }
 
   throw new Error(`Cannot find element: ${JSON.stringify(element)}`);

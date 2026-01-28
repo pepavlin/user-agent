@@ -40,6 +40,8 @@ const isInteractive = (role: string): boolean => {
 const parseAriaSnapshot = (snapshot: string): SnapshotElement[] => {
   const elements: SnapshotElement[] = [];
   const lines = snapshot.split('\n');
+  // Track how many times we've seen each role+name combo for nth() indexing
+  const roleNameCount: Record<string, number> = {};
 
   for (const line of lines) {
     // Skip empty lines and property lines (starting with /)
@@ -57,10 +59,18 @@ const parseAriaSnapshot = (snapshot: string): SnapshotElement[] => {
       const indentLevel = indent?.length || 0;
 
       if (isInteractive(role) && indentLevel <= 2) {
+        const elementName = name || '';
+        const key = `${role}:${elementName}`;
+
+        // Track nth index for elements with same role+name
+        const nthIndex = roleNameCount[key] || 0;
+        roleNameCount[key] = nthIndex + 1;
+
         const element: SnapshotElement = {
           id: generateId(role),
           role,
-          name: name || '',
+          name: elementName,
+          nthIndex,
         };
 
         // Check for attributes in the line

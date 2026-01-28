@@ -22,13 +22,27 @@ export type ExpectationInput = {
   context: SessionContext;
 };
 
-// Input for action decision
+// Input for action decision (legacy, kept for compatibility)
 export type DecisionInput = {
   analysis: ScreenAnalysis;
   expectation: Expectation;
   snapshot: SnapshotElement[];
   persona: string;
   context: SessionContext;
+};
+
+// Combined input for expectation + decision (optimized)
+export type ExpectAndDecideInput = {
+  analysis: ScreenAnalysis;
+  snapshot: SnapshotElement[];
+  persona: string;
+  context: SessionContext;
+};
+
+// Combined output for expectation + decision
+export type ExpectAndDecideResult = {
+  expectation: Expectation;
+  decision: ActionDecision;
 };
 
 // Input for evaluation
@@ -72,6 +86,8 @@ export type LLMProvider = {
   analyzeScreen(input: AnalyzeInput): Promise<LLMResponse<ScreenAnalysis>>;
   formulateExpectation(input: ExpectationInput): Promise<LLMResponse<Expectation>>;
   decideAction(input: DecisionInput): Promise<LLMResponse<ActionDecision>>;
+  // Combined expectation + decision (optimized - one LLM call instead of two)
+  expectAndDecide(input: ExpectAndDecideInput): Promise<LLMResponse<ExpectAndDecideResult>>;
   evaluateResult(input: EvaluationInput): Promise<LLMResponse<Evaluation>>;
   summarizeContext(input: SummarizeInput): Promise<LLMResponse<string>>;
 };

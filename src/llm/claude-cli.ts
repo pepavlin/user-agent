@@ -8,6 +8,8 @@ import type {
   AnalyzeInput,
   ExpectationInput,
   DecisionInput,
+  ExpectAndDecideInput,
+  ExpectAndDecideResult,
   EvaluationInput,
   SummarizeInput,
   PageContextInput,
@@ -22,6 +24,7 @@ import {
   createAnalyzePrompt,
   createExpectationPrompt,
   createDecisionPrompt,
+  createExpectAndDecidePrompt,
   createEvaluationPrompt,
   createSummarizePrompt,
   createPageContextPrompt,
@@ -43,6 +46,28 @@ const parseJsonResponse = <T>(text: string): T => {
 };
 
 const CLI_TIMEOUT_MS = 180000; // 180 second timeout (3 minutes)
+const MAX_RETRIES = 3;
+
+// Simple retry wrapper for JSON parsing - just retries silently
+const withRetry = async <T>(
+  fn: () => Promise<T>,
+  _operationName: string
+): Promise<T> => {
+  let lastError: Error | null = null;
+
+  for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
+    try {
+      return await fn();
+    } catch (error) {
+      lastError = error instanceof Error ? error : new Error(String(error));
+      if (attempt === MAX_RETRIES) {
+        throw lastError;
+      }
+    }
+  }
+
+  throw lastError;
+};
 
 const callClaudeCLI = async (
   prompt: string,
@@ -152,11 +177,13 @@ export const createClaudeCLI = (): LLMProvider => {
       const imagePath = await saveImageToTmp(input.screenshot);
 
       try {
-        const { text, inputTokens, outputTokens } = await callClaudeCLI(prompt, imagePath);
-        return {
-          data: parseJsonResponse<ScreenAnalysis>(text),
-          usage: { inputTokens, outputTokens },
-        };
+        return await withRetry(async () => {
+          const { text, inputTokens, outputTokens } = await callClaudeCLI(prompt, imagePath);
+          return {
+            data: parseJsonResponse<ScreenAnalysis>(text),
+            usage: { inputTokens, outputTokens },
+          };
+        }, 'analyzeScreen');
       } finally {
         await cleanupImage(imagePath);
       }
@@ -164,12 +191,14 @@ export const createClaudeCLI = (): LLMProvider => {
 
     async formulateExpectation(input: ExpectationInput): Promise<LLMResponse<Expectation>> {
       const prompt = createExpectationPrompt(input.persona, input.analysis, input.context);
-      const { text, inputTokens, outputTokens } = await callClaudeCLI(prompt);
 
-      return {
-        data: parseJsonResponse<Expectation>(text),
-        usage: { inputTokens, outputTokens },
-      };
+      return withRetry(async () => {
+        const { text, inputTokens, outputTokens } = await callClaudeCLI(prompt);
+        return {
+          data: parseJsonResponse<Expectation>(text),
+          usage: { inputTokens, outputTokens },
+        };
+      }, 'formulateExpectation');
     },
 
     async decideAction(input: DecisionInput): Promise<LLMResponse<ActionDecision>> {
@@ -180,12 +209,39 @@ export const createClaudeCLI = (): LLMProvider => {
         input.snapshot,
         input.context
       );
-      const { text, inputTokens, outputTokens } = await callClaudeCLI(prompt);
 
-      return {
-        data: parseJsonResponse<ActionDecision>(text),
-        usage: { inputTokens, outputTokens },
-      };
+      return withRetry(async () => {
+        const { text, inputTokens, outputTokens } = await callClaudeCLI(prompt);
+        return {
+          data: parseJsonResponse<ActionDecision>(text),
+          usage: { inputTokens, outputTokens },
+        };
+      }, 'decideAction');
+    },
+
+    async expectAndDecide(input: ExpectAndDecideInput): Promise<LLMResponse<ExpectAndDecideResult>> {
+      const prompt = createExpectAndDecidePrompt(
+        input.persona,
+        input.analysis,
+        input.snapshot,
+        input.context
+      );
+
+      return withRetry(async () => {
+        const { text, inputTokens, outputTokens } = await callClaudeCLI(prompt);
+        const parsed = parseJsonResponse<{ expectation: { what: string; expectedTime?: string; confidence?: string }; decision: ActionDecision }>(text);
+        return {
+          data: {
+            expectation: {
+              what: parsed.expectation.what,
+              expectedTime: parsed.expectation.expectedTime,
+              confidence: parsed.expectation.confidence,
+            },
+            decision: parsed.decision,
+          },
+          usage: { inputTokens, outputTokens },
+        };
+      }, 'expectAndDecide');
     },
 
     async evaluateResult(input: EvaluationInput): Promise<LLMResponse<Evaluation>> {
@@ -198,11 +254,13 @@ export const createClaudeCLI = (): LLMProvider => {
       const imagePath = await saveImageToTmp(input.afterScreenshot);
 
       try {
-        const { text, inputTokens, outputTokens } = await callClaudeCLI(prompt, imagePath);
-        return {
-          data: parseJsonResponse<Evaluation>(text),
-          usage: { inputTokens, outputTokens },
-        };
+        return await withRetry(async () => {
+          const { text, inputTokens, outputTokens } = await callClaudeCLI(prompt, imagePath);
+          return {
+            data: parseJsonResponse<Evaluation>(text),
+            usage: { inputTokens, outputTokens },
+          };
+        }, 'evaluateResult');
       } finally {
         await cleanupImage(imagePath);
       }
