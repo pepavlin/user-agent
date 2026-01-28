@@ -3,9 +3,19 @@
   "version": "0.1.0",
   "description": "Simulate real human users to discover UX blind spots",
   "type": "module",
-  "main": "dist/cli/index.js",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
   "bin": {
     "user-agent": "dist/cli/index.js"
+  },
+  "exports": {
+    ".": {
+      "import": "./dist/index.js",
+      "types": "./dist/index.d.ts"
+    },
+    "./cli": {
+      "import": "./dist/cli/index.js"
+    }
   },
   "scripts": {
     "dev": "tsx src/cli/index.ts",
@@ -38,5 +48,10 @@
   },
   "engines": {
     "node": ">=20.0.0"
-  }
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE"
+  ]
 }
