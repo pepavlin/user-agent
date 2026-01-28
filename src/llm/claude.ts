@@ -190,7 +190,7 @@ export const createClaudeLLM = (): LLMProvider => {
         input.context
       );
       const { text, inputTokens, outputTokens } = await callWithImage(prompt);
-      const parsed = parseJsonResponse<{ expectation: { what: string; expectedTime?: string; confidence?: string }; decision: ActionDecision }>(text);
+      const parsed = parseJsonResponse<{ expectation: { what: string; expectedTime?: string; confidence?: 'high' | 'medium' | 'low' }; decision: ActionDecision }>(text);
 
       return {
         data: {

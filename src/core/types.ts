@@ -9,6 +9,7 @@ export type SessionConfig = {
   waitBetweenActions: number;
   credentials?: Credentials;
   outputPath: string;
+  jsonOutputPath?: string; // Optional JSON output for automation
   debug: false | 'debug' | 'ultra';
   budgetCZK: number;
 };
@@ -49,7 +50,7 @@ export type ScreenAnalysis = {
 export type Expectation = {
   what: string;
   expectedTime?: string;
-  confidence: 'high' | 'medium' | 'low';
+  confidence?: 'high' | 'medium' | 'low';
 };
 
 // Action decision from AI

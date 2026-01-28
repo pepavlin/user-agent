@@ -229,7 +229,7 @@ export const createClaudeCLI = (): LLMProvider => {
 
       return withRetry(async () => {
         const { text, inputTokens, outputTokens } = await callClaudeCLI(prompt);
-        const parsed = parseJsonResponse<{ expectation: { what: string; expectedTime?: string; confidence?: string }; decision: ActionDecision }>(text);
+        const parsed = parseJsonResponse<{ expectation: { what: string; expectedTime?: string; confidence?: 'high' | 'medium' | 'low' }; decision: ActionDecision }>(text);
         return {
           data: {
             expectation: {

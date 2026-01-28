@@ -4,6 +4,7 @@ import type { BrowserManager } from '../browser/types.js';
 import type { Logger, CostTracker } from '../utils/types.js';
 import type { ReportGenerator } from '../report/types.js';
 import { createVisionProvider } from '../vision/index.js';
+import { saveJsonReport } from '../report/index.js';
 import { createInitialContext, updateContext } from './context.js';
 import { executeStep } from './step.js';
 
@@ -195,6 +196,12 @@ export const runSession = async (
   // Save report
   await reportGenerator.save(report, config.outputPath);
   logger.info(`Report saved to ${config.outputPath}`);
+
+  // Save JSON report if path specified
+  if (config.jsonOutputPath) {
+    await saveJsonReport(report, config.jsonOutputPath, videoPath ?? undefined);
+    logger.info(`JSON report saved to ${config.jsonOutputPath}`);
+  }
 
   return report;
 };

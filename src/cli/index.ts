@@ -4,7 +4,7 @@ import { Command } from 'commander';
 import { runSession } from '../core/session.js';
 import { createBrowserManager } from '../browser/index.js';
 import { createLLMProvider, type LLMProviderType } from '../llm/index.js';
-import { createMarkdownReportGenerator } from '../report/index.js';
+import { createMarkdownReportGenerator, saveJsonReport } from '../report/index.js';
 import { createLogger, createCostTracker } from '../utils/index.js';
 import { defaults } from '../config/defaults.js';
 import { getPersonaPreset, listPersonaPresets, PERSONA_PRESETS } from '../config/personas.js';
@@ -67,6 +67,7 @@ program
   .option('--debug [level]', 'Debug mode (true, debug, or ultra)', 'false')
   .option('--budget <czk>', 'Maximum cost in CZK', '5')
   .option('--llm <provider>', 'LLM provider (claude, claude-cli, openai)', 'claude-cli')
+  .option('--json <path>', 'Output JSON report for automation (optional)')
   .action(async (options) => {
     const debugLevel = parseDebug(options.debug);
     const logger = createLogger(debugLevel);
@@ -108,6 +109,7 @@ program
         waitBetweenActions: parseInt(options.wait, 10),
         credentials: options.credentials ? parseCredentials(options.credentials) : undefined,
         outputPath: options.output,
+        jsonOutputPath: options.json,
         debug: debugLevel,
         budgetCZK: parseFloat(options.budget),
       };

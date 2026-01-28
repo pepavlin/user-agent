@@ -43,3 +43,4 @@ test-results/
 .docker/
 
 .playwright-mcp
+report.json
