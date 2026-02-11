@@ -38,5 +38,10 @@ COPY . .
 # Build TypeScript
 RUN npm run build
 
-# Set entrypoint
-ENTRYPOINT ["node", "dist/cli/index.js"]
+# Create directories for session artifacts
+RUN mkdir -p /app/tmp/reports /app/tmp/videos
+
+EXPOSE 3000
+
+# Run the API server by default
+ENTRYPOINT ["node", "dist/server/index.js"]

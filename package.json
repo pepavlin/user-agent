@@ -19,8 +19,10 @@
   },
   "scripts": {
     "dev": "tsx --env-file=.env src/cli/index.ts",
+    "dev:server": "tsx --env-file=.env src/server/index.ts",
     "build": "tsc",
     "start": "node dist/cli/index.js",
+    "start:server": "node dist/server/index.js",
     "test": "vitest",
     "lint": "eslint src/",
     "typecheck": "tsc --noEmit"
@@ -37,7 +39,9 @@
   "license": "MIT",
   "dependencies": {
     "@anthropic-ai/sdk": "^0.39.0",
+    "@fastify/cors": "^10.0.0",
     "commander": "^12.1.0",
+    "fastify": "^5.0.0",
     "playwright": "^1.49.0"
   },
   "devDependencies": {
