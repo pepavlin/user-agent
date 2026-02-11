@@ -1,5 +1,7 @@
 import Fastify from 'fastify';
 import cors from '@fastify/cors';
+import swagger from '@fastify/swagger';
+import swaggerUi from '@fastify/swagger-ui';
 import { randomUUID } from 'crypto';
 import { runSession } from '../core/session.js';
 import { createBrowserManager } from '../browser/index.js';
@@ -150,14 +152,132 @@ const validateCreateRequest = (body: unknown): { valid: true; data: CreateSessio
   };
 };
 
+// --- JSON Schemas for Swagger ---
+
+const errorSchema = {
+  type: 'object',
+  properties: {
+    error: { type: 'string' },
+  },
+} as const;
+
+const healthSchema = {
+  type: 'object',
+  properties: {
+    status: { type: 'string', enum: ['ok'] },
+    version: { type: 'string' },
+    uptime: { type: 'number', description: 'Server uptime in seconds' },
+  },
+} as const;
+
+const sessionConfigSchema = {
+  type: 'object',
+  properties: {
+    url: { type: 'string', format: 'uri' },
+    persona: { type: 'string' },
+    intent: { type: 'string' },
+    maxSteps: { type: 'integer' },
+    timeout: { type: 'integer' },
+    waitBetweenActions: { type: 'integer' },
+    budgetCZK: { type: 'number' },
+    credentials: { type: 'object', additionalProperties: { type: 'string' } },
+  },
+} as const;
+
+const createSessionBodySchema = {
+  type: 'object',
+  required: ['url', 'persona'],
+  properties: {
+    url: { type: 'string', format: 'uri', description: 'Target URL to test' },
+    persona: { type: 'string', description: 'Natural language user persona description' },
+    intent: { type: 'string', description: 'What the user wants to achieve (omit for exploratory mode)' },
+    maxSteps: { type: 'integer', minimum: 1, maximum: 50, default: 10, description: 'Maximum number of interaction steps' },
+    timeout: { type: 'integer', minimum: 10, maximum: 3600, default: 300, description: 'Session timeout in seconds' },
+    waitBetweenActions: { type: 'integer', minimum: 1, maximum: 60, default: 3, description: 'Wait time between actions in seconds' },
+    budgetCZK: { type: 'number', minimum: 1, default: 5, description: 'Maximum cost in CZK before stopping' },
+    credentials: { type: 'object', additionalProperties: { type: 'string' }, description: 'Login credentials as key-value pairs' },
+  },
+} as const;
+
+const createSessionResponseSchema = {
+  type: 'object',
+  properties: {
+    sessionId: { type: 'string', format: 'uuid' },
+    status: { type: 'string', enum: ['pending'] },
+  },
+} as const;
+
+const sessionSummaryItemSchema = {
+  type: 'object',
+  properties: {
+    id: { type: 'string', format: 'uuid' },
+    status: { type: 'string', enum: ['pending', 'running', 'completed', 'failed'] },
+    url: { type: 'string' },
+    persona: { type: 'string' },
+    createdAt: { type: 'integer', description: 'Unix timestamp in milliseconds' },
+    completedAt: { type: 'integer', description: 'Unix timestamp in milliseconds' },
+  },
+} as const;
+
+const getSessionResponseSchema = {
+  type: 'object',
+  properties: {
+    id: { type: 'string', format: 'uuid' },
+    status: { type: 'string', enum: ['pending', 'running', 'completed', 'failed'] },
+    config: sessionConfigSchema,
+    createdAt: { type: 'integer', description: 'Unix timestamp in milliseconds' },
+    startedAt: { type: 'integer', description: 'Unix timestamp in milliseconds' },
+    completedAt: { type: 'integer', description: 'Unix timestamp in milliseconds' },
+    report: { type: 'string', description: 'Markdown report (present when completed)' },
+    jsonReport: { type: 'object', description: 'Structured JSON report (present when completed)' },
+    error: { type: 'string', description: 'Error message (present when failed)' },
+  },
+} as const;
+
 // Create and configure the Fastify server
-export const createServer = () => {
+export const createServer = async () => {
   const apiKey = process.env.API_KEY;
 
   const server = Fastify({ logger: true });
 
+  // Register Swagger (OpenAPI spec generation)
+  await server.register(swagger, {
+    openapi: {
+      info: {
+        title: 'UserAgent API',
+        description: 'UX research automation — simulate real human users interacting with web applications. Sessions run asynchronously; poll for results.',
+        version: VERSION,
+      },
+      components: {
+        securitySchemes: {
+          apiKey: {
+            type: 'apiKey',
+            name: 'X-API-Key',
+            in: 'header',
+            description: 'API key passed via X-API-Key header',
+          },
+          bearerAuth: {
+            type: 'http',
+            scheme: 'bearer',
+            description: 'API key passed via Authorization: Bearer header',
+          },
+        },
+      },
+    },
+  });
+
+  // Register Swagger UI dashboard
+  await server.register(swaggerUi, {
+    routePrefix: '/docs',
+    uiConfig: {
+      docExpansion: 'list',
+      deepLinking: true,
+      tryItOutEnabled: true,
+    },
+  });
+
   // Register CORS
-  server.register(cors);
+  await server.register(cors);
 
   // Auth hook for protected routes
   const authenticate = (request: { headers: Record<string, string | string[] | undefined> }): boolean => {
@@ -175,16 +295,66 @@ export const createServer = () => {
   };
 
   // GET /health — no auth required
-  server.get<{ Reply: HealthResponse }>('/health', async () => {
+  server.get('/health', {
+    schema: {
+      tags: ['System'],
+      summary: 'Health check',
+      description: 'Returns server status, version, and uptime. No authentication required.',
+      response: {
+        200: healthSchema,
+      },
+    },
+  }, async () => {
     return {
       status: 'ok',
       version: VERSION,
       uptime: process.uptime(),
-    };
+    } satisfies HealthResponse;
   });
 
   // POST /sessions — create a new session
-  server.post<{ Body: CreateSessionRequest; Reply: CreateSessionResponse | ErrorResponse }>('/sessions', async (request, reply) => {
+  server.post('/sessions', {
+    schema: {
+      tags: ['Sessions'],
+      summary: 'Start a new UX testing session',
+      description: 'Creates a new session that runs in the background. Returns immediately with a session ID. Poll GET /sessions/:id for results.',
+      security: [{ apiKey: [] }, { bearerAuth: [] }],
+      body: {
+        content: {
+          'application/json': {
+            schema: createSessionBodySchema,
+            examples: {
+              basic: {
+                summary: 'Basic session',
+                value: {
+                  url: 'https://spotify.com',
+                  persona: 'Jana, 45 let. Nikdy nepouzila Spotify.',
+                  intent: 'Find relaxing music',
+                },
+              },
+              full: {
+                summary: 'Full config',
+                value: {
+                  url: 'https://example.com/login',
+                  persona: 'Viktor, 22 let. Pouziva internet denne.',
+                  intent: 'Log in and check profile',
+                  maxSteps: 15,
+                  timeout: 600,
+                  budgetCZK: 10,
+                  credentials: { email: 'user@example.com', password: 'secret' },
+                },
+              },
+            },
+          },
+        },
+      },
+      response: {
+        201: createSessionResponseSchema,
+        400: errorSchema,
+        401: errorSchema,
+      },
+    },
+  }, async (request, reply) => {
     if (!authenticate(request)) {
       return reply.status(401).send({ error: 'Unauthorized. Provide X-API-Key header or Authorization: Bearer token.' });
     }
@@ -223,11 +393,30 @@ export const createServer = () => {
     return reply.status(201).send({
       sessionId,
       status: 'pending',
-    });
+    } satisfies CreateSessionResponse);
   });
 
   // GET /sessions/:id — get session status and results
-  server.get<{ Params: { id: string }; Reply: GetSessionResponse | ErrorResponse }>('/sessions/:id', async (request, reply) => {
+  server.get<{ Params: { id: string } }>('/sessions/:id', {
+    schema: {
+      tags: ['Sessions'],
+      summary: 'Get session status and results',
+      description: 'Returns session status, config, and results. The report and jsonReport fields are populated when the session completes.',
+      security: [{ apiKey: [] }, { bearerAuth: [] }],
+      params: {
+        type: 'object',
+        properties: {
+          id: { type: 'string', format: 'uuid', description: 'Session ID' },
+        },
+        required: ['id'],
+      },
+      response: {
+        200: getSessionResponseSchema,
+        401: errorSchema,
+        404: errorSchema,
+      },
+    },
+  }, async (request, reply) => {
     if (!authenticate(request)) {
       return reply.status(401).send({ error: 'Unauthorized. Provide X-API-Key header or Authorization: Bearer token.' });
     }
@@ -237,7 +426,7 @@ export const createServer = () => {
       return reply.status(404).send({ error: 'Session not found' });
     }
 
-    const response: GetSessionResponse = {
+    return {
       id: session.id,
       status: session.status,
       config: session.config,
@@ -247,13 +436,25 @@ export const createServer = () => {
       report: session.report,
       jsonReport: session.jsonReport,
       error: session.error,
-    };
-
-    return response;
+    } satisfies GetSessionResponse;
   });
 
   // GET /sessions — list all sessions (summary only)
-  server.get<{ Reply: SessionSummaryItem[] | ErrorResponse }>('/sessions', async (request, reply) => {
+  server.get('/sessions', {
+    schema: {
+      tags: ['Sessions'],
+      summary: 'List all sessions',
+      description: 'Returns a summary list of all sessions, sorted by creation time (newest first). Does not include full reports.',
+      security: [{ apiKey: [] }, { bearerAuth: [] }],
+      response: {
+        200: {
+          type: 'array',
+          items: sessionSummaryItemSchema,
+        },
+        401: errorSchema,
+      },
+    },
+  }, async (request, reply) => {
     if (!authenticate(request)) {
       return reply.status(401).send({ error: 'Unauthorized. Provide X-API-Key header or Authorization: Bearer token.' });
     }
@@ -287,7 +488,7 @@ const start = async () => {
     console.warn('WARNING: API_KEY not set. Endpoints will be unauthenticated.');
   }
 
-  const server = createServer();
+  const server = await createServer();
   const cleanupInterval = startCleanupInterval();
 
   // Graceful shutdown
@@ -303,6 +504,7 @@ const start = async () => {
   try {
     await server.listen({ port, host: '0.0.0.0' });
     console.log(`UserAgent API server v${VERSION} listening on port ${port}`);
+    console.log(`Swagger UI available at http://localhost:${port}/docs`);
   } catch (err) {
     server.log.error(err);
     process.exit(1);
