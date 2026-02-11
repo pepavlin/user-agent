@@ -188,20 +188,6 @@ const healthSchema = {
   },
 } as const;
 
-const sessionConfigSchema = {
-  type: 'object',
-  properties: {
-    url: { type: 'string', format: 'uri' },
-    persona: { type: 'string' },
-    intent: { type: 'string' },
-    maxSteps: { type: 'integer' },
-    timeout: { type: 'integer' },
-    waitBetweenActions: { type: 'integer' },
-    budgetCZK: { type: 'number' },
-    credentials: { type: 'object', additionalProperties: { type: 'string' } },
-  },
-} as const;
-
 const createSessionBodySchema = {
   type: 'object',
   required: ['url', 'persona'],
@@ -234,32 +220,6 @@ const sessionSummaryItemSchema = {
     persona: { type: 'string' },
     createdAt: { type: 'integer', description: 'Unix timestamp in milliseconds' },
     completedAt: { type: 'integer', description: 'Unix timestamp in milliseconds' },
-  },
-} as const;
-
-const sessionProgressSchema = {
-  type: 'object',
-  description: 'Live progress info (present while running)',
-  properties: {
-    currentStep: { type: 'integer', description: 'Current step number (0 = initializing)' },
-    totalSteps: { type: 'integer', description: 'Maximum number of steps' },
-    lastMessage: { type: 'string', description: 'Most recent log message from the session' },
-  },
-} as const;
-
-const getSessionResponseSchema = {
-  type: 'object',
-  properties: {
-    id: { type: 'string', format: 'uuid' },
-    status: { type: 'string', enum: ['pending', 'running', 'completed', 'failed'] },
-    config: sessionConfigSchema,
-    createdAt: { type: 'integer', description: 'Unix timestamp in milliseconds' },
-    startedAt: { type: 'integer', description: 'Unix timestamp in milliseconds' },
-    completedAt: { type: 'integer', description: 'Unix timestamp in milliseconds' },
-    progress: sessionProgressSchema,
-    report: { type: 'string', description: 'Markdown report (present when completed)' },
-    jsonReport: { type: 'object', additionalProperties: true, description: 'Structured JSON report (present when completed)' },
-    error: { type: 'string', description: 'Error message (present when failed)' },
   },
 } as const;
 
@@ -440,7 +400,7 @@ export const createServer = async () => {
         required: ['id'],
       },
       response: {
-        200: getSessionResponseSchema,
+        // No 200 schema — Fastify's serializer would strip nested jsonReport fields
         401: errorSchema,
         404: errorSchema,
       },
