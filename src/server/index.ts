@@ -11,6 +11,7 @@ import { buildJsonReport } from '../report/json.js';
 import { createLogger, createCostTracker } from '../utils/index.js';
 import { defaults } from '../config/defaults.js';
 import type { SessionConfig } from '../core/types.js';
+import type { Logger } from '../utils/types.js';
 import type {
   SessionState,
   CreateSessionRequest,
@@ -68,7 +69,26 @@ const executeSession = async (sessionId: string): Promise<void> => {
   const llm = createLLMProvider(llmType);
   const reportGenerator = createMarkdownReportGenerator();
   const costTracker = createCostTracker(config.budgetCZK, defaults.czkPerUsd);
-  const logger = createLogger(false);
+  const baseLogger = createLogger(false);
+
+  // Wrap logger to capture live progress into session state
+  session.progress = { currentStep: 0, totalSteps: session.config.maxSteps, lastMessage: 'Starting session...' };
+  const logger: Logger = {
+    ...baseLogger,
+    info(message: string) {
+      baseLogger.info(message);
+      session.progress!.lastMessage = message;
+    },
+    step(stepNumber: number, message: string) {
+      baseLogger.step(stepNumber, message);
+      session.progress!.currentStep = stepNumber;
+      session.progress!.lastMessage = message;
+    },
+    error(message: string, error?: Error) {
+      baseLogger.error(message, error);
+      session.progress!.lastMessage = `Error: ${message}`;
+    },
+  };
 
   try {
     const report = await runSession(config, {
@@ -218,6 +238,16 @@ const sessionSummaryItemSchema = {
   },
 } as const;
 
+const sessionProgressSchema = {
+  type: 'object',
+  description: 'Live progress info (present while running)',
+  properties: {
+    currentStep: { type: 'integer', description: 'Current step number (0 = initializing)' },
+    totalSteps: { type: 'integer', description: 'Maximum number of steps' },
+    lastMessage: { type: 'string', description: 'Most recent log message from the session' },
+  },
+} as const;
+
 const getSessionResponseSchema = {
   type: 'object',
   properties: {
@@ -227,6 +257,7 @@ const getSessionResponseSchema = {
     createdAt: { type: 'integer', description: 'Unix timestamp in milliseconds' },
     startedAt: { type: 'integer', description: 'Unix timestamp in milliseconds' },
     completedAt: { type: 'integer', description: 'Unix timestamp in milliseconds' },
+    progress: sessionProgressSchema,
     report: { type: 'string', description: 'Markdown report (present when completed)' },
     jsonReport: { type: 'object', description: 'Structured JSON report (present when completed)' },
     error: { type: 'string', description: 'Error message (present when failed)' },
@@ -432,6 +463,7 @@ export const createServer = async () => {
       createdAt: session.createdAt,
       startedAt: session.startedAt,
       completedAt: session.completedAt,
+      progress: session.progress,
       report: session.report,
       jsonReport: session.jsonReport,
       error: session.error,
