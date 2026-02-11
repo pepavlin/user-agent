@@ -4,9 +4,9 @@ services:
     ports:
       - "${PORT:-3000}:3000"
     environment:
-      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
       - API_KEY=${API_KEY}
-      - LLM_PROVIDER=${LLM_PROVIDER:-claude}
+      - LLM_PROVIDER=claude-cli
+      - CLAUDE_CODE_OAUTH_TOKEN=${CLAUDE_CODE_OAUTH_TOKEN}
       - PORT=3000
     volumes:
       - reports:/app/tmp/reports
