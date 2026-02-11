@@ -238,7 +238,7 @@ const getSessionResponseSchema = {
 export const createServer = async () => {
   const apiKey = process.env.API_KEY;
 
-  const server = Fastify({ logger: true });
+  const server = Fastify({ logger: true, trustProxy: true });
 
   // Register Swagger (OpenAPI spec generation)
   await server.register(swagger, {
