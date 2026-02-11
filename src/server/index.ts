@@ -18,7 +18,6 @@ import type {
   GetSessionResponse,
   SessionSummaryItem,
   HealthResponse,
-  ErrorResponse,
 } from './types.js';
 
 const VERSION = '0.1.0';
