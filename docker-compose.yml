@@ -2,7 +2,7 @@ services:
   user-agent:
     build: .
     ports:
-      - "${PORT:-3000}:3000"
+      - "6847:3000"
     environment:
       - API_KEY=${API_KEY}
       - LLM_PROVIDER=claude-cli
@@ -11,7 +11,7 @@ services:
     volumes:
       - reports:/app/tmp/reports
       - videos:/app/tmp/videos
-    restart: unless-stopped
+    restart: always
 
 volumes:
   reports:

@@ -13,7 +13,8 @@ COPY package*.json ./
 # Install dependencies
 RUN npm install
 
-# Install Playwright Chromium + all system dependencies automatically
+# Install Playwright Chromium to a shared path accessible by any user
+ENV PLAYWRIGHT_BROWSERS_PATH=/opt/playwright-browsers
 RUN npx playwright install --with-deps chromium
 
 # Install Claude Code CLI globally (used by claude-cli LLM provider)
