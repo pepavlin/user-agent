@@ -58,8 +58,7 @@ const executeSession = async (sessionId: string): Promise<void> => {
     timeout: session.config.timeout,
     waitBetweenActions: session.config.waitBetweenActions,
     credentials: session.config.credentials,
-    outputPath: `./tmp/reports/${sessionId}.md`,
-    jsonOutputPath: `./tmp/reports/${sessionId}.json`,
+    outputPath: `/tmp/${sessionId}.md`,
     debug: false,
     budgetCZK: session.config.budgetCZK,
   };
