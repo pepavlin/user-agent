@@ -259,7 +259,7 @@ const getSessionResponseSchema = {
     completedAt: { type: 'integer', description: 'Unix timestamp in milliseconds' },
     progress: sessionProgressSchema,
     report: { type: 'string', description: 'Markdown report (present when completed)' },
-    jsonReport: { type: 'object', description: 'Structured JSON report (present when completed)' },
+    jsonReport: { type: 'object', additionalProperties: true, description: 'Structured JSON report (present when completed)' },
     error: { type: 'string', description: 'Error message (present when failed)' },
   },
 } as const;
