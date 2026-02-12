@@ -81,12 +81,13 @@ const callClaudeCLI = async (
 
     const args = ['-p', fullPrompt, '--output-format', 'text', '--dangerously-skip-permissions'];
 
+    // Remove ANTHROPIC_API_KEY so Claude CLI uses CLAUDE_CODE_OAUTH_TOKEN instead
+    const env = { ...process.env };
+    delete env.ANTHROPIC_API_KEY;
+
     const child = spawn('claude', args, {
       stdio: ['pipe', 'pipe', 'pipe'],
-      env: {
-        ...process.env,
-        ANTHROPIC_API_KEY: '', // Use Claude subscription instead of API key
-      },
+      env,
     });
 
     // Close stdin immediately since we don't need it
@@ -117,7 +118,8 @@ const callClaudeCLI = async (
       if (timedOut) return; // Already rejected
 
       if (code !== 0) {
-        reject(new Error(`Claude CLI exited with code ${code}: ${stderr}`));
+        const errorDetail = stderr || stdout || '(no output)';
+        reject(new Error(`Claude CLI exited with code ${code}: ${errorDetail}`));
         return;
       }
 
