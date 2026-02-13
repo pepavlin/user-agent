@@ -110,7 +110,7 @@ const executeSession = async (sessionId: string): Promise<void> => {
 };
 
 // Validate request body
-const validateCreateRequest = (body: unknown): { valid: true; data: CreateSessionRequest } | { valid: false; error: string } => {
+export const validateCreateRequest = (body: unknown): { valid: true; data: CreateSessionRequest } | { valid: false; error: string } => {
   if (!body || typeof body !== 'object') {
     return { valid: false, error: 'Request body must be a JSON object' };
   }
@@ -223,6 +223,24 @@ const sessionSummaryItemSchema = {
   },
 } as const;
 
+// Auth check — extracted for testability
+export const authenticateRequest = (
+  apiKey: string | undefined,
+  request: { headers: Record<string, string | string[] | undefined> }
+): boolean => {
+  if (!apiKey) return true; // No API_KEY set = no auth required
+
+  const xApiKey = request.headers['x-api-key'];
+  if (xApiKey === apiKey) return true;
+
+  const authHeader = request.headers['authorization'];
+  if (typeof authHeader === 'string' && authHeader.startsWith('Bearer ') && authHeader.slice(7) === apiKey) {
+    return true;
+  }
+
+  return false;
+};
+
 // Create and configure the Fastify server
 export const createServer = async () => {
   const apiKey = process.env.API_KEY;
@@ -268,19 +286,8 @@ export const createServer = async () => {
   // Register CORS
   await server.register(cors);
 
-  // Auth hook for protected routes
   const authenticate = (request: { headers: Record<string, string | string[] | undefined> }): boolean => {
-    if (!apiKey) return true; // No API_KEY set = no auth required
-
-    const xApiKey = request.headers['x-api-key'];
-    if (xApiKey === apiKey) return true;
-
-    const authHeader = request.headers['authorization'];
-    if (typeof authHeader === 'string' && authHeader.startsWith('Bearer ') && authHeader.slice(7) === apiKey) {
-      return true;
-    }
-
-    return false;
+    return authenticateRequest(apiKey, request);
   };
 
   // GET /health — no auth required
@@ -501,4 +508,11 @@ const start = async () => {
   }
 };
 
-start();
+// Only start the server when run directly (not when imported as a module)
+const isMainModule = process.argv[1] && (
+  process.argv[1].endsWith('/server/index.ts') ||
+  process.argv[1].endsWith('/server/index.js')
+);
+if (isMainModule) {
+  start();
+}

@@ -95,7 +95,7 @@ const POSITIVE_KEYWORDS = [
 ];
 
 // Classify note sentiment
-const classifyNoteSentiment = (note: string): NoteSentiment => {
+export const classifyNoteSentiment = (note: string): NoteSentiment => {
   const lower = note.toLowerCase();
 
   // Count negative and positive indicators
@@ -126,7 +126,7 @@ const classifyNoteSentiment = (note: string): NoteSentiment => {
 };
 
 // Detect issue category from text
-const detectCategory = (text: string): string => {
+export const detectCategory = (text: string): string => {
   const lower = text.toLowerCase();
   if (lower.includes('form') || lower.includes('input') || lower.includes('field') || lower.includes('políčk') || lower.includes('formulář')) return 'form';
   if (lower.includes('navigation') || lower.includes('menu') || lower.includes('link') || lower.includes('navigac')) return 'navigation';
@@ -142,7 +142,7 @@ const detectCategory = (text: string): string => {
 };
 
 // Detect severity with improved rules
-const detectSeverity = (text: string, category: string): JsonReportIssue['severity'] => {
+export const detectSeverity = (text: string, category: string): JsonReportIssue['severity'] => {
   const lower = text.toLowerCase();
 
   // High severity: Critical issues
@@ -181,19 +181,19 @@ const detectSeverity = (text: string, category: string): JsonReportIssue['severi
 };
 
 // Generate stable issue ID
-const generateIssueId = (category: string, index: number): string => {
+export const generateIssueId = (category: string, index: number): string => {
   const prefix = category.toUpperCase().slice(0, 3);
   return `UX-${prefix}-${String(index + 1).padStart(3, '0')}`;
 };
 
 // Generate stable positive ID
-const generatePositiveId = (category: string, index: number): string => {
+export const generatePositiveId = (category: string, index: number): string => {
   const prefix = category.toUpperCase().slice(0, 3);
   return `OK-${prefix}-${String(index + 1).padStart(3, '0')}`;
 };
 
 // Extract persona name from description
-const extractPersonaName = (persona: string): { name: string; description: string } => {
+export const extractPersonaName = (persona: string): { name: string; description: string } => {
   // Try to find a name pattern like "Viktor", "Jana, 45", etc.
   const nameMatch = persona.match(/^([A-ZÁ-Ž][a-zá-ž]+)/);
   if (nameMatch) {
@@ -219,7 +219,7 @@ const extractPersonaName = (persona: string): { name: string; description: strin
 };
 
 // Generate specific, verifiable acceptance criteria
-const generateAcceptanceCriteria = (issue: string, category: string): string[] => {
+export const generateAcceptanceCriteria = (issue: string, category: string): string[] => {
   const criteria: string[] = [];
   const lower = issue.toLowerCase();
 

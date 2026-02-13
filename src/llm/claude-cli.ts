@@ -36,7 +36,7 @@ const ensureTmpDir = async () => {
   await mkdir(TMP_DIR, { recursive: true });
 };
 
-const parseJsonResponse = <T>(text: string): T => {
+export const parseJsonResponse = <T>(text: string): T => {
   // Try to extract JSON from the response
   const jsonMatch = text.match(/\{[\s\S]*\}/);
   if (!jsonMatch) {

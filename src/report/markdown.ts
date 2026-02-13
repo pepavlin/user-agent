@@ -2,7 +2,7 @@ import { writeFile } from 'fs/promises';
 import type { ReportGenerator } from './types.js';
 import type { SessionReport, StepResult, EvaluationResult } from '../core/types.js';
 
-const formatDuration = (ms: number): string => {
+export const formatDuration = (ms: number): string => {
   const seconds = Math.floor(ms / 1000);
   const minutes = Math.floor(seconds / 60);
   const remainingSeconds = seconds % 60;
@@ -17,7 +17,7 @@ const formatTimestamp = (ts: number): string => {
   return new Date(ts).toISOString();
 };
 
-const evaluationEmoji = (result: EvaluationResult): string => {
+export const evaluationEmoji = (result: EvaluationResult): string => {
   switch (result) {
     case 'met':
       return '\u2705'; // checkmark
@@ -30,7 +30,7 @@ const evaluationEmoji = (result: EvaluationResult): string => {
   }
 };
 
-const formatStep = (step: StepResult): string => {
+export const formatStep = (step: StepResult): string => {
   const lines: string[] = [];
 
   lines.push(`## Step ${step.stepNumber}`);
@@ -114,7 +114,7 @@ const formatQuickSummary = (steps: StepResult[]): string => {
   return lines.join('\n');
 };
 
-const generateMarkdown = (report: SessionReport, videoPath?: string): string => {
+export const generateMarkdown = (report: SessionReport, videoPath?: string): string => {
   const lines: string[] = [];
   const duration = report.endTime - report.startTime;
 

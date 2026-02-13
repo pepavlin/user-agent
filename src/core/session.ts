@@ -16,7 +16,7 @@ export type SessionDependencies = {
   reportGenerator: ReportGenerator;
 };
 
-const calculateIntuitivenessScore = (steps: StepResult[]): number => {
+export const calculateIntuitivenessScore = (steps: StepResult[]): number => {
   if (steps.length === 0) return 5;
 
   let score = 10;
@@ -41,7 +41,7 @@ const calculateIntuitivenessScore = (steps: StepResult[]): number => {
   return Math.max(0, Math.min(10, Math.round(score * 10) / 10));
 };
 
-const generateSummary = (steps: StepResult[], context: { issuesFound: string[] }): SessionSummary => {
+export const generateSummary = (steps: StepResult[], context: { issuesFound: string[] }): SessionSummary => {
   const improvements: string[] = [];
   const userQuotes: string[] = [];
 
