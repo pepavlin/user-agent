@@ -24,7 +24,9 @@ Do TWO things:
 1. EXPECTATION: As this persona, what do you expect will happen when you interact with what you see? Consider what would realistically happen, what might confuse this user, etc.
 
 2. DECISION: Choose ONE action to perform:
-- click: click an element (elementId required)
+- click: click an element by ID (elementId) OR by position on screen (coordinates: {x, y})
+  - Use elementId for elements from the list above (more reliable)
+  - Use coordinates {x, y} for anything else you see on screen (cards, images, visual elements not in the list)
 - type: type text into a SINGLE field (elementId + value required)
 - fill: fill MULTIPLE form fields at once (use for login forms, registration, etc.)
 - scroll: scroll the page
@@ -45,11 +47,13 @@ Respond in JSON:
   "decision": {
     "action": "click|type|fill|scroll|wait|navigate",
     "elementId": "element ID if needed",
+    "coordinates": {"x": 640, "y": 360},
     "value": "text value if needed for type action",
     "inputs": [{"elementId": "...", "value": "..."}],
     "reasoning": "why this action"
   }
 }
 
-Note: Include "inputs" array only for "fill" action, "elementId"+"value" only for "type" action.`;
+Note: Include "inputs" array only for "fill" action, "elementId"+"value" only for "type" action.
+For click: use "elementId" for interactive elements from the list, OR "coordinates" for visual elements not in the list. Do not provide both.`;
 };

@@ -54,11 +54,16 @@ export const executeAction = async (
   try {
     switch (action.action) {
       case 'click': {
-        if (!element) {
-          throw new Error('Element required for click action');
+        if (action.coordinates) {
+          // Coordinate-based click: click at pixel position on the page
+          await page.mouse.click(action.coordinates.x, action.coordinates.y);
+        } else if (element) {
+          // Element-based click: use ARIA snapshot element
+          const locator = findElement(page, element);
+          await locator.click({ timeout: 10000, force: true });
+        } else {
+          throw new Error('Element or coordinates required for click action');
         }
-        const locator = findElement(page, element);
-        await locator.click({ timeout: 10000, force: true });
         break;
       }
 

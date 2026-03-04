@@ -62,6 +62,11 @@ export const executeStep = async (
   if (decisionData.action === 'fill' && decisionData.inputs) {
     const inputIds = decisionData.inputs.map(i => i.elementId).join(', ');
     logger.step(stepNumber, `Action: fill ${decisionData.inputs.length} fields [${inputIds}]`);
+  } else if (decisionData.action === 'click' && decisionData.coordinates) {
+    logger.step(
+      stepNumber,
+      `Action: click at (${decisionData.coordinates.x}, ${decisionData.coordinates.y})`
+    );
   } else {
     logger.step(
       stepNumber,

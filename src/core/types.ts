@@ -67,6 +67,8 @@ export type ActionDecision = {
   action: ActionType;
   elementId?: string;
   value?: string;
+  // For 'click' action: click at pixel coordinates on the screenshot
+  coordinates?: { x: number; y: number };
   // For 'fill' action: multiple inputs at once (e.g., login form)
   inputs?: InputFill[];
   reasoning: string;
