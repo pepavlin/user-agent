@@ -2,13 +2,13 @@ services:
   user-agent:
     build: .
     ports:
-      - "6847:3000"
+      - "${PORT:-6847}:${PORT:-6847}"
     environment:
       - API_KEY=${API_KEY}
       - LLM_PROVIDER=claude-cli
       - CLAUDE_CODE_OAUTH_TOKEN=${CLAUDE_CODE_OAUTH_TOKEN}
-      - PORT=3000
-      - MAX_CONCURRENT_SESSIONS=2
+      - PORT=${PORT:-6847}
+      - MAX_CONCURRENT_SESSIONS=${MAX_CONCURRENT_SESSIONS:-2}
     volumes:
       - reports:/app/tmp/reports
       - videos:/app/tmp/videos
