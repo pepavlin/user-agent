@@ -12,6 +12,7 @@ export type SessionConfig = {
   jsonOutputPath?: string; // Optional JSON output for automation
   debug: false | 'debug' | 'ultra';
   budgetCZK: number;
+  webhookUrl?: string;
 };
 
 export type Credentials = {

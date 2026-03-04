@@ -109,6 +109,7 @@ npm run dev -- \
 | `--credentials` | Login credentials (`key=value,key=value`) | — |
 | `--output` | Output Markdown report path | `./report.md` |
 | `--json` | Output JSON report path (for automation) | — |
+| `--webhook` | Webhook URL to notify on session completion/failure | — |
 | `--debug` | Debug mode (`debug` or `ultra`) | `false` |
 | `--budget` | Max cost in CZK before stopping | `5` |
 | `--llm` | LLM provider (`claude`, `claude-cli`, `openai`) | `claude-cli` |

@@ -8,7 +8,7 @@ import { createBrowserManager } from '../browser/index.js';
 import { createLLMProvider, type LLMProviderType } from '../llm/index.js';
 import { createMarkdownReportGenerator } from '../report/index.js';
 import { buildJsonReport } from '../report/json.js';
-import { createLogger, createCostTracker } from '../utils/index.js';
+import { createLogger, createCostTracker, sendWebhook } from '../utils/index.js';
 import { defaults } from '../config/defaults.js';
 import type { SessionConfig } from '../core/types.js';
 import type { Logger } from '../utils/types.js';
@@ -48,6 +48,14 @@ const executeSession = async (sessionId: string): Promise<void> => {
 
   session.status = 'running';
   session.startedAt = Date.now();
+
+  if (session.config.webhookUrl) {
+    sendWebhook(session.config.webhookUrl, {
+      sessionId: sessionId,
+      status: 'running',
+      timestamp: Date.now(),
+    });
+  }
 
   const config: SessionConfig = {
     url: session.config.url,
@@ -102,10 +110,26 @@ const executeSession = async (sessionId: string): Promise<void> => {
     session.completedAt = Date.now();
     session.report = reportGenerator.generate(report);
     session.jsonReport = buildJsonReport(report);
+
+    if (session.config.webhookUrl) {
+      sendWebhook(session.config.webhookUrl, {
+        sessionId: sessionId,
+        status: 'completed',
+        timestamp: Date.now(),
+      });
+    }
   } catch (error) {
     session.status = 'failed';
     session.completedAt = Date.now();
     session.error = error instanceof Error ? error.message : String(error);
+
+    if (session.config.webhookUrl) {
+      sendWebhook(session.config.webhookUrl, {
+        sessionId: sessionId,
+        status: 'failed',
+        timestamp: Date.now(),
+      });
+    }
   }
 };
 
@@ -155,6 +179,17 @@ export const validateCreateRequest = (body: unknown): { valid: true; data: Creat
     return { valid: false, error: 'Field "credentials" must be an object with string values' };
   }
 
+  if (b.webhookUrl !== undefined) {
+    if (typeof b.webhookUrl !== 'string') {
+      return { valid: false, error: 'Field "webhookUrl" must be a string' };
+    }
+    try {
+      new URL(b.webhookUrl);
+    } catch {
+      return { valid: false, error: 'Field "webhookUrl" must be a valid URL' };
+    }
+  }
+
   return {
     valid: true,
     data: {
@@ -166,6 +201,7 @@ export const validateCreateRequest = (body: unknown): { valid: true; data: Creat
       waitBetweenActions: b.waitBetweenActions as number | undefined,
       budgetCZK: b.budgetCZK as number | undefined,
       credentials: b.credentials as Record<string, string> | undefined,
+      webhookUrl: b.webhookUrl as string | undefined,
     },
   };
 };
@@ -200,6 +236,7 @@ const createSessionBodySchema = {
     waitBetweenActions: { type: 'integer', minimum: 1, maximum: 60, default: 3, description: 'Wait time between actions in seconds' },
     budgetCZK: { type: 'number', minimum: 1, default: 5, description: 'Maximum cost in CZK before stopping' },
     credentials: { type: 'object', additionalProperties: { type: 'string' }, description: 'Login credentials as key-value pairs' },
+    webhookUrl: { type: 'string', format: 'uri', description: 'Webhook URL to receive POST notifications on session status changes' },
   },
 } as const;
 
@@ -338,6 +375,7 @@ export const createServer = async () => {
                   timeout: 600,
                   budgetCZK: 10,
                   credentials: { email: 'user@example.com', password: 'secret' },
+                  webhookUrl: 'https://hooks.example.com/session-done',
                 },
               },
             },
@@ -375,6 +413,7 @@ export const createServer = async () => {
         waitBetweenActions: data.waitBetweenActions ?? defaults.waitBetweenActions,
         budgetCZK: data.budgetCZK ?? defaults.budgetCZK,
         credentials: data.credentials,
+        webhookUrl: data.webhookUrl,
       },
       createdAt: Date.now(),
     };

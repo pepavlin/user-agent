@@ -6,6 +6,7 @@ export const defaults = {
   debug: false as false | 'debug' | 'ultra',
   budgetCZK: 5,
   czkPerUsd: 23.5,
+  webhookTimeoutMs: 5000,
 } as const;
 
 export type Defaults = typeof defaults;

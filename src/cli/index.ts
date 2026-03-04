@@ -1,11 +1,12 @@
 #!/usr/bin/env node
 
 import { Command } from 'commander';
+import { randomUUID } from 'crypto';
 import { runSession } from '../core/session.js';
 import { createBrowserManager } from '../browser/index.js';
 import { createLLMProvider, type LLMProviderType } from '../llm/index.js';
 import { createMarkdownReportGenerator, saveJsonReport } from '../report/index.js';
-import { createLogger, createCostTracker } from '../utils/index.js';
+import { createLogger, createCostTracker, sendWebhook } from '../utils/index.js';
 import { defaults } from '../config/defaults.js';
 import { getPersonaPreset, listPersonaPresets, PERSONA_PRESETS } from '../config/personas.js';
 import type { SessionConfig, Credentials } from '../core/types.js';
@@ -68,6 +69,7 @@ program
   .option('--budget <czk>', 'Maximum cost in CZK', '5')
   .option('--llm <provider>', 'LLM provider (claude, claude-cli, openai)', process.env.LLM_PROVIDER || 'claude-cli')
   .option('--json <path>', 'Output JSON report for automation (optional)')
+  .option('--webhook <url>', 'Webhook URL to notify on session completion/failure')
   .action(async (options) => {
     const debugLevel = parseDebug(options.debug);
     const logger = createLogger(debugLevel);
@@ -112,7 +114,10 @@ program
         jsonOutputPath: options.json,
         debug: debugLevel,
         budgetCZK: parseFloat(options.budget),
+        webhookUrl: options.webhook,
       };
+
+      const sessionId = randomUUID();
 
       logger.info('UserAgent v0.1.0');
       logger.info('================');
@@ -138,9 +143,26 @@ program
       logger.info(`Cost: $${report.cost.totalCostUSD.toFixed(4)} (${report.cost.totalCostCZK.toFixed(2)} CZK)`);
       logger.info(`Report: ${config.outputPath}`);
 
+      if (config.webhookUrl) {
+        await sendWebhook(config.webhookUrl, {
+          sessionId,
+          status: 'completed',
+          timestamp: Date.now(),
+        });
+      }
+
       process.exit(0);
     } catch (error) {
       logger.error('Session failed', error instanceof Error ? error : undefined);
+
+      if (options.webhook) {
+        await sendWebhook(options.webhook, {
+          sessionId,
+          status: 'failed',
+          timestamp: Date.now(),
+        });
+      }
+
       process.exit(1);
     }
   });

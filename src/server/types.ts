@@ -23,6 +23,7 @@ export type SessionState = {
     waitBetweenActions: number;
     budgetCZK: number;
     credentials?: Record<string, string>;
+    webhookUrl?: string;
   };
   createdAt: number;
   startedAt?: number;
@@ -43,6 +44,7 @@ export type CreateSessionRequest = {
   waitBetweenActions?: number;
   budgetCZK?: number;
   credentials?: Record<string, string>;
+  webhookUrl?: string;
 };
 
 // POST /sessions response

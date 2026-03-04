@@ -21,6 +21,7 @@ describe('validateCreateRequest', () => {
       waitBetweenActions: 5,
       budgetCZK: 10,
       credentials: { email: 'user@test.com', password: 'secret' },
+      webhookUrl: 'https://hooks.example.com/callback',
     });
     expect(result.valid).toBe(true);
     if (result.valid) {
@@ -28,6 +29,7 @@ describe('validateCreateRequest', () => {
       expect(result.data.timeout).toBe(600);
       expect(result.data.budgetCZK).toBe(10);
       expect(result.data.credentials).toEqual({ email: 'user@test.com', password: 'secret' });
+      expect(result.data.webhookUrl).toBe('https://hooks.example.com/callback');
     }
   });
 
@@ -78,6 +80,49 @@ describe('validateCreateRequest', () => {
     expect(validateCreateRequest('string').valid).toBe(false);
     expect(validateCreateRequest(42).valid).toBe(false);
     expect(validateCreateRequest(undefined).valid).toBe(false);
+  });
+
+  it('accepts valid webhookUrl', () => {
+    const result = validateCreateRequest({
+      url: 'https://example.com',
+      persona: 'Jana',
+      webhookUrl: 'https://hooks.example.com/callback',
+    });
+    expect(result.valid).toBe(true);
+    if (result.valid) {
+      expect(result.data.webhookUrl).toBe('https://hooks.example.com/callback');
+    }
+  });
+
+  it('accepts request without webhookUrl (optional field)', () => {
+    const result = validateCreateRequest({
+      url: 'https://example.com',
+      persona: 'Jana',
+    });
+    expect(result.valid).toBe(true);
+    if (result.valid) {
+      expect(result.data.webhookUrl).toBeUndefined();
+    }
+  });
+
+  it('rejects invalid webhookUrl format', () => {
+    const result = validateCreateRequest({
+      url: 'https://example.com',
+      persona: 'Jana',
+      webhookUrl: 'not-a-url',
+    });
+    expect(result.valid).toBe(false);
+    if (!result.valid) expect(result.error).toContain('webhookUrl');
+  });
+
+  it('rejects non-string webhookUrl', () => {
+    const result = validateCreateRequest({
+      url: 'https://example.com',
+      persona: 'Jana',
+      webhookUrl: 123,
+    });
+    expect(result.valid).toBe(false);
+    if (!result.valid) expect(result.error).toContain('webhookUrl');
   });
 });
 
