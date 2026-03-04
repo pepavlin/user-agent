@@ -596,6 +596,16 @@ async capture(): Promise<VisionResult>
 // const oldImplementation = ...
 ```
 
+### Documentation
+
+Keep `docs/` up to date when making changes. The docs are organized by topic:
+- `docs/architecture/` — system design, data flow, step lifecycle
+- `docs/modules/` — per-module documentation (LLM, Vision, Browser, Report)
+- `docs/server/` — REST API and webhooks
+- `docs/configuration/` — CLI, defaults, personas
+
+When modifying a module, update the corresponding doc file. When adding a new module, create a new doc file and link it from `docs/README.md`.
+
 ## Code Conventions (Summary)
 
 - All comments and documentation in English
