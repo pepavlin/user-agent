@@ -11,24 +11,24 @@ const makePayload = (overrides?: Partial<WebhookPayload>): WebhookPayload => ({
 });
 
 describe('sendWebhook', () => {
-  let fetchSpy: ReturnType<typeof vi.spyOn>;
+  const mockFetch = vi.fn<typeof fetch>();
 
   beforeEach(() => {
-    fetchSpy = vi.spyOn(globalThis, 'fetch');
+    vi.stubGlobal('fetch', mockFetch);
   });
 
   afterEach(() => {
-    fetchSpy.mockRestore();
+    vi.restoreAllMocks();
   });
 
   it('sends a POST request with correct body and headers', async () => {
-    fetchSpy.mockResolvedValueOnce(new Response(null, { status: 200 }));
+    mockFetch.mockResolvedValueOnce(new Response(null, { status: 200 }));
 
     const payload = makePayload();
     await sendWebhook(VALID_URL, payload);
 
-    expect(fetchSpy).toHaveBeenCalledTimes(1);
-    const [url, options] = fetchSpy.mock.calls[0] as [string, RequestInit];
+    expect(mockFetch).toHaveBeenCalledTimes(1);
+    const [url, options] = mockFetch.mock.calls[0] as [string, RequestInit];
     expect(url).toBe(VALID_URL);
     expect(options.method).toBe('POST');
     expect(options.headers).toEqual({ 'Content-Type': 'application/json' });
@@ -36,43 +36,43 @@ describe('sendWebhook', () => {
   });
 
   it('includes AbortSignal timeout', async () => {
-    fetchSpy.mockResolvedValueOnce(new Response(null, { status: 200 }));
+    mockFetch.mockResolvedValueOnce(new Response(null, { status: 200 }));
 
     await sendWebhook(VALID_URL, makePayload());
 
-    const [, options] = fetchSpy.mock.calls[0] as [string, RequestInit];
+    const [, options] = mockFetch.mock.calls[0] as [string, RequestInit];
     expect(options.signal).toBeDefined();
   });
 
   it('retries once on failure then succeeds', async () => {
-    fetchSpy
+    mockFetch
       .mockRejectedValueOnce(new Error('Network error'))
       .mockResolvedValueOnce(new Response(null, { status: 200 }));
 
     await sendWebhook(VALID_URL, makePayload());
 
-    expect(fetchSpy).toHaveBeenCalledTimes(2);
+    expect(mockFetch).toHaveBeenCalledTimes(2);
   });
 
   it('retries on non-ok HTTP status', async () => {
-    fetchSpy
+    mockFetch
       .mockResolvedValueOnce(new Response(null, { status: 500 }))
       .mockResolvedValueOnce(new Response(null, { status: 200 }));
 
     await sendWebhook(VALID_URL, makePayload());
 
-    expect(fetchSpy).toHaveBeenCalledTimes(2);
+    expect(mockFetch).toHaveBeenCalledTimes(2);
   });
 
   it('does not throw when all retries fail', async () => {
-    fetchSpy.mockRejectedValue(new Error('Network error'));
+    mockFetch.mockRejectedValue(new Error('Network error'));
 
     // Should not throw
     await expect(sendWebhook(VALID_URL, makePayload())).resolves.toBeUndefined();
   });
 
   it('logs a warning when webhook delivery fails', async () => {
-    fetchSpy.mockRejectedValue(new Error('Connection refused'));
+    mockFetch.mockRejectedValue(new Error('Connection refused'));
     const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
 
     await sendWebhook(VALID_URL, makePayload());
@@ -85,7 +85,7 @@ describe('sendWebhook', () => {
   });
 
   it('does not throw on non-ok status after all retries exhausted', async () => {
-    fetchSpy.mockResolvedValue(new Response(null, { status: 502 }));
+    mockFetch.mockResolvedValue(new Response(null, { status: 502 }));
 
     await expect(sendWebhook(VALID_URL, makePayload())).resolves.toBeUndefined();
   });

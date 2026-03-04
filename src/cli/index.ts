@@ -73,6 +73,7 @@ program
   .action(async (options) => {
     const debugLevel = parseDebug(options.debug);
     const logger = createLogger(debugLevel);
+    const sessionId = randomUUID();
 
     try {
       // Resolve persona from preset or direct input
@@ -116,8 +117,6 @@ program
         budgetCZK: parseFloat(options.budget),
         webhookUrl: options.webhook,
       };
-
-      const sessionId = randomUUID();
 
       logger.info('UserAgent v0.1.0');
       logger.info('================');
