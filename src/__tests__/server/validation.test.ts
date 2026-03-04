@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest';
-import { validateCreateRequest, authenticateRequest } from '@/server/index';
+import { validateCreateRequest, authenticateRequest, countActiveSessions } from '@/server/index';
+import type { SessionState } from '@/server/types';
 
 describe('validateCreateRequest', () => {
   it('accepts valid minimal request (url + persona only)', () => {
@@ -123,6 +124,41 @@ describe('validateCreateRequest', () => {
     });
     expect(result.valid).toBe(false);
     if (!result.valid) expect(result.error).toContain('webhookUrl');
+  });
+});
+
+describe('countActiveSessions', () => {
+  const makeSession = (status: SessionState['status']): SessionState => ({
+    id: crypto.randomUUID(),
+    status,
+    config: { url: 'https://a.com', persona: 'J', maxSteps: 10, timeout: 300, waitBetweenActions: 3, budgetCZK: 5 },
+    createdAt: Date.now(),
+  });
+
+  it('counts pending and running sessions', () => {
+    const store = new Map<string, SessionState>();
+    const s1 = makeSession('pending');
+    const s2 = makeSession('running');
+    const s3 = makeSession('completed');
+    const s4 = makeSession('failed');
+    store.set(s1.id, s1);
+    store.set(s2.id, s2);
+    store.set(s3.id, s3);
+    store.set(s4.id, s4);
+    expect(countActiveSessions(store)).toBe(2);
+  });
+
+  it('returns 0 for empty store', () => {
+    expect(countActiveSessions(new Map())).toBe(0);
+  });
+
+  it('returns 0 when all sessions are terminal', () => {
+    const store = new Map<string, SessionState>();
+    const s1 = makeSession('completed');
+    const s2 = makeSession('failed');
+    store.set(s1.id, s1);
+    store.set(s2.id, s2);
+    expect(countActiveSessions(store)).toBe(0);
   });
 });
 

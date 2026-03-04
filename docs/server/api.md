@@ -25,6 +25,7 @@ Swagger documentation is available at `/docs`.
 | `ANTHROPIC_API_KEY` | If using `claude` | Anthropic API key |
 | `CLAUDE_CODE_OAUTH_TOKEN` | If using `claude-cli` | Claude Code OAuth token |
 | `PORT` | No | Server port (default: `3000`) |
+| `MAX_CONCURRENT_SESSIONS` | No | Maximum sessions running at once (default: `2`) |
 
 ## Authentication
 
@@ -86,6 +87,13 @@ Create and start a new session. The session runs in the background.
 {
   "sessionId": "abc123",
   "status": "pending"
+}
+```
+
+**Response (429)** — when concurrent session limit is reached:
+```json
+{
+  "error": "Maximum concurrent sessions limit reached (2). Please wait for a running session to complete before starting a new one."
 }
 ```
 

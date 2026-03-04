@@ -23,9 +23,20 @@ import type {
 
 const VERSION = '0.1.0';
 const SESSION_TTL_MS = 24 * 60 * 60 * 1000; // 24 hours
+const MAX_CONCURRENT_SESSIONS = parseInt(process.env.MAX_CONCURRENT_SESSIONS || '', 10) || defaults.maxConcurrentSessions;
 
 // In-memory session storage
 const sessions = new Map<string, SessionState>();
+
+export const countActiveSessions = (store: Map<string, SessionState>): number => {
+  let count = 0;
+  for (const session of store.values()) {
+    if (session.status === 'pending' || session.status === 'running') {
+      count++;
+    }
+  }
+  return count;
+};
 
 // Cleanup expired sessions every hour
 const startCleanupInterval = (): NodeJS.Timeout => {
@@ -398,6 +409,7 @@ export const createServer = async () => {
         201: createSessionResponseSchema,
         400: errorSchema,
         401: errorSchema,
+        429: errorSchema,
       },
     },
   }, async (request, reply) => {
@@ -411,6 +423,13 @@ export const createServer = async () => {
     }
 
     const { data } = validation;
+
+    if (countActiveSessions(sessions) >= MAX_CONCURRENT_SESSIONS) {
+      return reply.status(429).send({
+        error: `Maximum concurrent sessions limit reached (${MAX_CONCURRENT_SESSIONS}). Please wait for a running session to complete before starting a new one.`,
+      });
+    }
+
     const sessionId = randomUUID();
 
     const state: SessionState = {

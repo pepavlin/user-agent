@@ -7,6 +7,7 @@ export const defaults = {
   budgetCZK: 5,
   czkPerUsd: 23.5,
   webhookTimeoutMs: 5000,
+  maxConcurrentSessions: 2,
 } as const;
 
 export type Defaults = typeof defaults;
