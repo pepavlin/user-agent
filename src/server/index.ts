@@ -1,4 +1,4 @@
-import Fastify from 'fastify';
+import Fastify, { type FastifyError } from 'fastify';
 import cors from '@fastify/cors';
 import swagger from '@fastify/swagger';
 import swaggerUi from '@fastify/swagger-ui';
@@ -283,6 +283,18 @@ export const createServer = async () => {
   const apiKey = process.env.API_KEY;
 
   const server = Fastify({ logger: true, trustProxy: true });
+
+  // Return detailed validation error messages to the client
+  server.setErrorHandler((error: FastifyError, _request, reply) => {
+    if (error.validation) {
+      const details = error.validation
+        .map((v: { message?: string; keyword?: string }) => v.message ?? `${v.keyword} validation failed`)
+        .join('; ');
+      return reply.status(400).send({ error: details });
+    }
+    const statusCode = error.statusCode ?? 500;
+    return reply.status(statusCode).send({ error: error.message });
+  });
 
   // Register Swagger (OpenAPI spec generation)
   await server.register(swagger, {
