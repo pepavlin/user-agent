@@ -89,12 +89,19 @@ export const runSession = async (
   });
   logger.info('Browser launched');
 
-  await browser.navigate(config.url);
+  try {
+    await browser.navigate(config.url);
+  } catch (error) {
+    // Ensure browser is closed before propagating navigation error
+    await browser.close();
+    throw error;
+  }
   logger.info(`Navigated to ${config.url}`);
 
   // Create vision provider with the page
   const page = browser.getPage();
   if (!page) {
+    await browser.close();
     throw new Error('Failed to get browser page');
   }
   const vision = createVisionProvider(page);

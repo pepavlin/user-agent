@@ -8,9 +8,18 @@ services:
       - LLM_PROVIDER=claude-cli
       - CLAUDE_CODE_OAUTH_TOKEN=${CLAUDE_CODE_OAUTH_TOKEN}
       - PORT=3000
+      - MAX_CONCURRENT_SESSIONS=2
     volumes:
       - reports:/app/tmp/reports
       - videos:/app/tmp/videos
+    deploy:
+      resources:
+        limits:
+          cpus: "2.0"
+          memory: 2G
+        reservations:
+          cpus: "0.5"
+          memory: 512M
     restart: always
 
 volumes:

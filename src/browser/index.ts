@@ -43,7 +43,27 @@ export const createBrowserManager = (): BrowserManager => {
       if (!page) {
         throw new Error('Browser not launched');
       }
-      await page.goto(url, { waitUntil: 'domcontentloaded' });
+
+      try {
+        await page.goto(url, { waitUntil: 'domcontentloaded' });
+      } catch (error) {
+        const message = error instanceof Error ? error.message : String(error);
+
+        if (message.includes('ERR_NAME_NOT_RESOLVED')) {
+          throw new Error(`Could not resolve domain. The URL "${url}" does not exist or DNS lookup failed.`);
+        }
+        if (message.includes('ERR_CONNECTION_REFUSED')) {
+          throw new Error(`Connection refused. The server at "${url}" is not accepting connections.`);
+        }
+        if (message.includes('ERR_CONNECTION_TIMED_OUT') || message.includes('Timeout')) {
+          throw new Error(`Connection timed out while loading "${url}".`);
+        }
+        if (message.includes('ERR_CERT') || message.includes('ERR_SSL')) {
+          throw new Error(`SSL/certificate error while loading "${url}". The site may have an invalid certificate.`);
+        }
+
+        throw new Error(`Failed to navigate to "${url}": ${message.split('\nCall log:')[0].trim()}`);
+      }
     },
 
     setSnapshot(snapshot: SnapshotElement[]) {
