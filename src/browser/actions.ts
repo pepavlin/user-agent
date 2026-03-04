@@ -123,6 +123,18 @@ export const executeAction = async (
         break;
       }
 
+      case 'hover': {
+        if (action.coordinates) {
+          await page.mouse.move(action.coordinates.x, action.coordinates.y);
+        } else if (element) {
+          const locator = findElement(page, element);
+          await locator.hover({ timeout: 10000 });
+        } else {
+          throw new Error('Element or coordinates required for hover action');
+        }
+        break;
+      }
+
       case 'read': {
         // Read action is passive - just for AI to analyze content
         // No browser action needed

@@ -28,6 +28,7 @@ Choose ONE action:
 - scroll: scroll the page
 - wait: wait for something
 - read: read content on page
+- hover: move mouse over an element to reveal tooltips, dropdowns, or hover states (elementId or coordinates required)
 - navigate: go to a different URL (value = the URL)
 
 IMPORTANT:

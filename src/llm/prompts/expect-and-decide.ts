@@ -31,6 +31,7 @@ Do TWO things:
 - fill: fill MULTIPLE form fields at once (use for login forms, registration, etc.)
 - scroll: scroll the page
 - wait: wait for something
+- hover: move mouse over an element to reveal tooltips, dropdowns, or hover states (elementId or coordinates required)
 - navigate: go to a different URL (value = the URL)
 
 IMPORTANT for fill action:
@@ -45,7 +46,7 @@ Respond in JSON:
     "confidence": "high/medium/low"
   },
   "decision": {
-    "action": "click|type|fill|scroll|wait|navigate",
+    "action": "click|type|fill|scroll|wait|hover|navigate",
     "elementId": "element ID if needed",
     "coordinates": {"x": 640, "y": 360},
     "value": "text value if needed for type action",

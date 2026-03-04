@@ -50,6 +50,7 @@ Before executing an action, the session calls `browser.setSnapshot(snapshot)` to
 | `scroll` | Scroll the page | `scrollIntoViewIfNeeded()` if element given, else `window.scrollBy(0, 300)` |
 | `wait` | Wait for a duration | `page.waitForTimeout(ms)`, default 1,000 ms |
 | `navigate` | Go to a URL | `page.goto(url)` |
+| `hover` | Hover over an element | By element ID (`locator.hover()`) or coordinates (`page.mouse.move(x, y)`) |
 | `read` | Passive observation | No-op; signals AI wants to read without interacting |
 
 ### Click: Element-Based vs Coordinate-Based

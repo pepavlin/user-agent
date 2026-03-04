@@ -55,7 +55,7 @@ export type Expectation = {
 };
 
 // Action decision from AI
-export type ActionType = 'click' | 'type' | 'scroll' | 'wait' | 'navigate' | 'read' | 'fill';
+export type ActionType = 'click' | 'type' | 'scroll' | 'wait' | 'navigate' | 'read' | 'fill' | 'hover';
 
 // Single input to fill
 export type InputFill = {

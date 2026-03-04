@@ -6,16 +6,19 @@ import type { SnapshotElement } from '@/vision/types';
 const createMockPage = () => ({
   mouse: {
     click: vi.fn().mockResolvedValue(undefined),
+    move: vi.fn().mockResolvedValue(undefined),
   },
   getByRole: vi.fn().mockReturnValue({
     nth: vi.fn().mockReturnValue({
       click: vi.fn().mockResolvedValue(undefined),
       fill: vi.fn().mockResolvedValue(undefined),
+      hover: vi.fn().mockResolvedValue(undefined),
     }),
   }),
   getByText: vi.fn().mockReturnValue({
     nth: vi.fn().mockReturnValue({
       click: vi.fn().mockResolvedValue(undefined),
+      hover: vi.fn().mockResolvedValue(undefined),
     }),
   }),
   evaluate: vi.fn().mockResolvedValue(undefined),
@@ -155,6 +158,58 @@ describe('executeAction', () => {
 
       expect(result.success).toBe(false);
       expect(result.error).toBe('click failed');
+    });
+  });
+
+  describe('hover with element', () => {
+    it('uses locator.hover for element-based hover', async () => {
+      const page = createMockPage();
+      const element = makeElement();
+      const action: ActionDecision = {
+        action: 'hover',
+        elementId: 'btn-1',
+        reasoning: 'hovering over button to see tooltip',
+      };
+
+      const result = await executeAction(page as any, action, element);
+
+      expect(result.success).toBe(true);
+      expect(page.getByRole).toHaveBeenCalledWith('button', {
+        name: 'Submit',
+        exact: false,
+      });
+      expect(page.mouse.move).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('hover with coordinates', () => {
+    it('calls page.mouse.move with given coordinates', async () => {
+      const page = createMockPage();
+      const action: ActionDecision = {
+        action: 'hover',
+        coordinates: { x: 400, y: 300 },
+        reasoning: 'hovering over a visual element',
+      };
+
+      const result = await executeAction(page as any, action);
+
+      expect(result.success).toBe(true);
+      expect(page.mouse.move).toHaveBeenCalledWith(400, 300);
+    });
+  });
+
+  describe('hover error handling', () => {
+    it('fails when neither element nor coordinates are provided', async () => {
+      const page = createMockPage();
+      const action: ActionDecision = {
+        action: 'hover',
+        reasoning: 'no target specified',
+      };
+
+      const result = await executeAction(page as any, action, undefined);
+
+      expect(result.success).toBe(false);
+      expect(result.error).toBe('Element or coordinates required for hover action');
     });
   });
 });
